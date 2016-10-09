@@ -6,14 +6,14 @@ except ImportError:
 config = {
     'description': 'Firewall Policy Automation Engine',
     'author': 'John Anderson',
-    'url': 'https://github.com/lampwins/oragengine',
-    'download_url': 'https://github.com/lampwins/oragengine',
+    'url': 'https://github.com/lampwins/orangengine',
+    'download_url': 'https://github.com/lampwins/orangengine',
     'author_email': 'lampwins@gmail.com.',
     'version': '0.0.1',
     'install_requires': [''],
-    'packages': ['oragengine'],
+    'packages': ['orangengine'],
     'scripts': [],
-    'name': 'oragengine'
+    'name': 'orangengine'
 }
 
 setup(**config)
