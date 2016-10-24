@@ -1,5 +1,5 @@
 
-from drivers import generic
+from orangengine.drivers.base import BaseDriver
 
 from pandevice import base
 from pandevice import panorama
@@ -7,10 +7,10 @@ from pandevice import policies
 from pandevice import objects
 
 
-class PaloAltoPanorama(generic.GenericDriver):
+class PaloAltoPanoramaDriver(BaseDriver):
 
     def __init__(self):
-        super(self.__class__, self).__init__()
+        BaseDriver.__init__(self)
         self.get_device()
 
     def get_device(self):

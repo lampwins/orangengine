@@ -13,7 +13,8 @@ config = {
     'install_requires': ['multi_key_dict', 'netmiko', 'pandevice'],
     'packages': ['orangengine'],
     'scripts': [],
-    'name': 'orangengine'
+    'name': 'orangengine',
+    'requirements': ['multi_key_dict', 'netmiko', 'pandevice'],
 }
 
 setup(**config)

@@ -1,7 +1,7 @@
 
 class ServiceGroup(object):
 
-    def __init__(self, name, elements=None):
+    def __init__(self, name, elements=list()):
         """init a service group"""
 
         self.name = name

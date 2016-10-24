@@ -1,7 +1,7 @@
 
 class AddressGroup(object):
 
-    def __init__(self, name, elements=None):
+    def __init__(self, name, elements=list()):
         """init a address group object"""
 
         self.name = name
