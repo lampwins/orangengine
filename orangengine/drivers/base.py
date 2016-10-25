@@ -24,27 +24,31 @@ class BaseDriver(object):
         # share some output between methods
         self.config_output = dict()
 
-        # address
+        # address lookup dictionaries
         self.address_name_lookup = dict()
         self.address_value_lookup = defaultdict(list)
         self.address_group_name_lookup = dict()
         self.address_group_value_lookup = defaultdict(list)
 
-        # service
+        # service lookup dictionaries
         self.service_name_lookup = dict()
         self.service_value_lookup = defaultdict(list)
         self.service_group_name_lookup = dict()
         self.service_group_value_lookup = defaultdict(list)
 
+        # retrieve, parse, and store objects
+        # order matters here as objects have to already
+        # exist in the lookup dictionaries
         self.get_addresses()
         self.get_address_groups()
         self.get_services()
         self.get_service_groups()
+        self.get_polices()
 
     def _address_lookup_by_name(self, name):
         return self.address_name_lookup[name]
 
-    def _address_set_lookup_by_name(self, name):
+    def _address_group_lookup_by_name(self, name):
         return self.address_group_name_lookup[name]
 
     def _service_lookup_by_name(self, name):

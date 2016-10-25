@@ -11,8 +11,6 @@ class PaloAltoPanoramaDriver(BaseDriver):
 
     def __init__(self):
         BaseDriver.__init__(self)
-        self.get_device()
 
-    def get_device(self):
-        pass
+
 

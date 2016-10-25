@@ -9,6 +9,7 @@ from orangengine.models import Service
 from orangengine.models import ServiceTerm
 from orangengine.models import PortRange
 from orangengine.models import ServiceGroup
+from orangengine.models import Policy
 
 
 class JuniperSRXDriver(BaseDriver):
@@ -69,7 +70,8 @@ class JuniperSRXDriver(BaseDriver):
 
         # rpc-reply > configuration > groups > applications
         output_junos_default = ET.fromstring(self.device_conn.send_command(
-            'show configuration groups junos-defaults applications | display xml').strip())[0][0].find('applications')
+            'show configuration groups junos-defaults applications | display xml').strip())[0][0].find(
+            'applications')
 
         # rpc-reply > configuration > applications
         self.config_output['output_applications'] = ET.fromstring(self.device_conn.send_command(
@@ -119,3 +121,9 @@ class JuniperSRXDriver(BaseDriver):
                 self.service_group_value_lookup[a].append(service_group)
 
             self.service_group_name_lookup[name] = service_group
+
+    def get_polices(self):
+        """
+        retrieve and parse polices
+        """
+        pass
