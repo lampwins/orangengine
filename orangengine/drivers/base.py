@@ -36,6 +36,10 @@ class BaseDriver(object):
         self.service_group_name_lookup = dict()
         self.service_group_value_lookup = defaultdict(list)
 
+        # policies
+        self.policies = list()
+        self.policy_tuple_lookup = list()
+
         # retrieve, parse, and store objects
         # order matters here as objects have to already
         # exist in the lookup dictionaries
@@ -56,6 +60,47 @@ class BaseDriver(object):
 
     def _service_group_lookup_by_name(self, name):
         return self.service_group_name_lookup[name]
+
+    def get_address_object_by_name(self, name):
+        """
+        public function to get address object by name
+        either single object or group
+        """
+        if name in self.address_name_lookup.keys():
+            return self._address_lookup_by_name(name)
+        elif name in self.address_group_name_lookup.keys():
+            return self._address_group_lookup_by_name(name)
+        else:
+            return None
+
+    def get_service_object_by_name(self, name):
+        """
+        public function to get address object by name
+        either single object or group
+        """
+        if name in self.service_name_lookup.keys():
+            return self._service_lookup_by_name(name)
+        elif name in self.service_group_name_lookup.keys():
+            return self._service_group_lookup_by_name(name)
+        else:
+            return None
+
+    def _add_policy(self, policy):
+        self.policies.append(policy)
+        self.policy_tuple_lookup.append((policy.value, policy))
+
+    def policy_match(self, match_tuple):
+        """
+        match policy tuples by match criteria and return those policies
+        """
+        def matcher(pattern):
+            def f(data):
+                return all(p is None or r == p for r, p in zip(data, pattern))
+            return f
+
+        tuples = filter(matcher(match_tuple), self.policy_tuple_lookup)
+        for t in tuples:
+            yield t[1]
 
     @abc.abstractmethod
     def get_addresses(self):

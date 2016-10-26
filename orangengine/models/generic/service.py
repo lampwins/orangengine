@@ -10,6 +10,13 @@ class PortRange(object):
     def __str__(self):
         return '{0} {1}'.format(self.start, self.stop)
 
+    def __getattr__(self, item):
+
+        if item == 'value':
+            return self.start + "-" + self.stop
+        else:
+            raise AttributeError
+
 
 class ServiceTerm(object):
 
@@ -20,19 +27,37 @@ class ServiceTerm(object):
         self.protocol = protocol
         self.port = port
 
+    def __getattr__(self, item):
+
+        if item == 'value':
+            return self.protocol, self.port
+        else:
+            raise AttributeError
+
 
 class Service(object):
 
-    def __init__(self, name, protocol=None, port=None, application=None):
+    def __init__(self, name, protocol=None, port=None):
         """init a service"""
 
         self.name = name
         self.protocol = protocol
         self.port = port
-        self.application = application
         self.terms = list()
 
     def add_term(self, term):
         """append a service term"""
 
         self.terms.append(term)
+
+    def __getattr__(self, item):
+
+        if item == 'value':
+            if len(self.terms) > 0:
+                return [t.value for t in self.terms]
+            elif isinstance(self.port, PortRange):
+                return self.protocol, self.port.value
+            else:
+                return self.protocol, self.port
+        else:
+            raise AttributeError

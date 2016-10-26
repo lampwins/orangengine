@@ -43,6 +43,11 @@ class JuniperSRXDriver(BaseDriver):
             self.address_name_lookup[name] = address
             self.address_value_lookup[value].append(address)
 
+        # special case: manually create "any" address
+        any_address = Address("any", "0.0.0.0/0", 1)
+        self.address_name_lookup['any'] = any_address
+        self.address_value_lookup['0.0.0.0/0'].append(any_address)
+
     def get_address_groups(self):
         """
         retrieve and parse the address-set objects
@@ -126,4 +131,40 @@ class JuniperSRXDriver(BaseDriver):
         """
         retrieve and parse polices
         """
-        pass
+
+        output = self.device_conn.send_command('show configuration security policies | display xml')
+
+        # rpc-reply > configuration > security > policies
+        policies = ET.fromstring(output.strip())[0][0][0]
+
+        for e_zone_set in policies.findall('policy'):
+            from_zone = e_zone_set.find('from-zone-name').text
+            to_zone = e_zone_set.find('to-zone-name').text
+            action = logging = None
+            for e_policy in e_zone_set.findall('policy'):
+                name = e_policy.find('name').text
+                description = e_policy.find('description')
+                if description is not None:
+                    description = description.text
+                for e_then in list(e_policy.find('then')):
+                    if e_then.tag in ['permit', 'deny', 'reject']:
+                        action = e_then.tag
+                    elif e_then.tag == 'log':
+                        logging = e_then[0].tag
+                    else:
+                        # unhandled element
+                        pass
+                policy = Policy(name, action, description, logging)
+                policy.add_src_zone(from_zone)
+                policy.add_dst_zone(to_zone)
+                e_match = e_policy.find('match')
+                for e_type in ['source-address', 'destination-address', 'application']:
+                    for e in e_match.findall(e_type):
+                        if e_type == 'source-address':
+                            policy.add_src_address(self.get_address_object_by_name(e.text))
+                        elif e_type == 'destination-address':
+                            policy.add_dst_address(self.get_address_object_by_name(e.text))
+                        elif e_type == 'application':
+                            policy.add_service(self.get_service_object_by_name(e.text))
+
+                self._add_policy(policy)

@@ -14,3 +14,10 @@ class Address(object):
         self.name = name
         self.value = value
         self.a_type = a_type
+
+    def __getattr__(self, item):
+
+        if item == 'value':
+            return self.value
+        else:
+            raise AttributeError

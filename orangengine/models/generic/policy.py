@@ -1,17 +1,15 @@
 
 class Policy(object):
 
-    def __init__(self, name, action, description, logging, src_zones=list(),
-                 dst_zones=list(), src_addresses=list(), dst_addresses=list(),
-                 services=list(), ):
+    def __init__(self, name, action, description, logging):
         """init policy"""
 
         self.name = name
-        self.src_zones = src_zones
-        self.dst_zones = dst_zones
-        self.src_addresses = src_addresses
-        self.dst_addresses = dst_addresses
-        self.services = services
+        self.src_zones = list()
+        self.dst_zones = list()
+        self.src_addresses = list()
+        self.dst_addresses = list()
+        self.services = list()
         self.action = action
         self.description = description
         self.logging = logging
@@ -30,3 +28,19 @@ class Policy(object):
 
     def add_service(self, service):
         self.services.append(service)
+
+    def __getattr__(self, item):
+        """
+        return a tuple representation of the policy with normalized values
+        """
+
+        if item == 'value':
+
+            s_addrs = [a.value for a in self.src_addresses]
+            d_addrs = [a.value for a in self.dst_addresses]
+            services = [s.value for s in self.services]
+
+            return self.src_zones, self.dst_zones, s_addrs, d_addrs, services, self.action
+
+        else:
+            raise AttributeError()
