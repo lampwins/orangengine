@@ -1,4 +1,7 @@
 
+from itertools import chain
+
+
 class Policy(object):
 
     def __init__(self, name, action, description, logging):
@@ -36,7 +39,10 @@ class Policy(object):
 
         if item == 'value':
 
-            s_addrs = [a.value for a in self.src_addresses]
+            if self.name == 'wug_mon_Jackson_jones':
+                pass
+
+            s_addrs = chain.from_iterable([a.value for a in self.src_addresses])
             d_addrs = [a.value for a in self.dst_addresses]
             services = [s.value for s in self.services]
 

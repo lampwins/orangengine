@@ -91,7 +91,7 @@ class BaseDriver(object):
 
     def policy_match(self, match_tuple):
         """
-        match policy tuples by match criteria and return those policies
+        match policy tuples by match criteria (also a tuple) and return those policies
         """
         def matcher(pattern):
             def f(data):

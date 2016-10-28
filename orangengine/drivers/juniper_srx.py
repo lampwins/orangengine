@@ -44,9 +44,9 @@ class JuniperSRXDriver(BaseDriver):
             self.address_value_lookup[value].append(address)
 
         # special case: manually create "any" address
-        any_address = Address("any", "0.0.0.0/0", 1)
+        any_address = Address("any", "any", 1)
         self.address_name_lookup['any'] = any_address
-        self.address_value_lookup['0.0.0.0/0'].append(any_address)
+        self.address_value_lookup['any'].append(any_address)
 
     def get_address_groups(self):
         """
@@ -74,7 +74,7 @@ class JuniperSRXDriver(BaseDriver):
         """
 
         # rpc-reply > configuration > groups > applications
-        output_junos_default = ET.fromstring(self.device_conn.send_command(
+        self.config_output['output_junos_default'] = ET.fromstring(self.device_conn.send_command(
             'show configuration groups junos-defaults applications | display xml').strip())[0][0].find(
             'applications')
 
@@ -82,7 +82,7 @@ class JuniperSRXDriver(BaseDriver):
         self.config_output['output_applications'] = ET.fromstring(self.device_conn.send_command(
             'show configuration applications | display xml').strip())[0][0]
 
-        for applications in [output_junos_default, self.config_output['output_applications']]:
+        for applications in [self.config_output['output_junos_default'], self.config_output['output_applications']]:
             for e_application in applications.findall('application'):
                 s_name = e_application.find('name').text
                 port = None
@@ -113,19 +113,20 @@ class JuniperSRXDriver(BaseDriver):
 
     def get_service_groups(self):
         """
-        retrieve and parse service groups
+        retrieve and parse service groups (includes junos-defaults and user defined applications)
         """
 
         # rpc-reply > configuration > applications
-        for e_service_set in self.config_output['output_applications'].findall('application-set'):
-            name = e_service_set.find('name').text
-            service_group = ServiceGroup(name)
-            for e_application in e_service_set.findall('application'):
-                a = e_application.find('name').text
-                service_group.add(self._service_lookup_by_name(a))
-                self.service_group_value_lookup[a].append(service_group)
+        for application_sets in [self.config_output['output_junos_default'], self.config_output['output_applications']]:
+            for e_service_set in application_sets.findall('application-set'):
+                name = e_service_set.find('name').text
+                service_group = ServiceGroup(name)
+                for e_application in e_service_set.findall('application'):
+                    a = e_application.find('name').text
+                    service_group.add(self._service_lookup_by_name(a))
+                    self.service_group_value_lookup[a].append(service_group)
 
-            self.service_group_name_lookup[name] = service_group
+                self.service_group_name_lookup[name] = service_group
 
     def get_polices(self):
         """

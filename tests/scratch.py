@@ -57,9 +57,9 @@ device = orangengine.dispatch(**srx)
 #        print "\t\t" + s.name
 #
 
-# (self.src_zones, self.dst_zones, s_addrs, d_addrs, services, self.action)
 
-t = ('campus', 'iDMZ', None, '10.7.67.206', None, 'permit')
+# (self.src_zones, self.dst_zones, s_addrs, d_addrs, services, self.action)
+t = (['iDMZ'], ['eDMZ'], None, None, None, None)
 
 policies = device.policy_match(t)
 
