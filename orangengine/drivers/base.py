@@ -129,44 +129,36 @@ class BaseDriver(object):
                                     destination_addresses=None, services=None, action=None):
         """
         determine the best policy to append an element from the match criteria to
+        return those policies that match and the unique "target" element, or None if no match is found
         """
 
         set_list = []
-        target_elements = {}
+        target_element = {}
 
         match_elements = locals()
         match_elements.pop('self')
 
+        # for each of the named parameters, find policy matches for those parameters
         for key, value in match_elements:
+            # ignore those parameters which were not passed in, i.e. defaulted to None
             if value is not None and value:
-                me_set = set(self.policy_match(key=value, action=action))
+                me_set = set(self.policy_match(**{key: value, 'action': action}))
+                if len(me_set) == 0:
+                    # this is a unique element, thus our target element to append to policy x
+                    target_element[key] = value
+                else:
+                    # add the match set to the match set list
+                    set_list.append(me_set)
 
-       # #if source_zones is not None and source_zones:
-       #     p_set = set(self.policy_match(source_zones=source_zones, action=action))
-       #     if len(p_set) > 0:
-       #         set_list.append(p_set)
-       #     else:
-       #         target_elements['source_zones'] = source_zones
-#
-       # if destination_zones is not None and destination_zones:
-       #     d_set = set(self.policy_match(destination_zones=destination_zones, action=action))
-       #     if len(d_set) > 0:
-       #         set_list.append(d_set)
-       #     else:
-       #         target_elements['destination_zones'] = destination_zones
-#
-       # if source_addresses is not None and source_addresses:
-       #     set_list.append(set(self.policy_match(source_addresses=source_addresses, action=action)))
-#
-       # if destination_addresses is not None and destination_addresses:
-       #     set_list.append(set(self.policy_match(destination_addresses=destination_addresses, action=action)))
-#
-       # if services is not None and services:
-       #     set_list.append(set(self.policy_match(services=services, action=action)))
-
+        # the intersection of all match sets is the set of all policies that the target element can to appended to
         matches = set.intersection(*set_list)
 
-        return matches
+        if len(matches) == 0 or len(target_element) > 1:
+            # no valid matches or more than one target element identified
+            return None
+
+        # found valid matches
+        return matches, target_element
 
     @abc.abstractmethod
     def get_addresses(self):
