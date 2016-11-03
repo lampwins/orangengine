@@ -85,6 +85,12 @@ class JuniperSRXDriver(BaseDriver):
         for applications in [self.config_output['output_junos_default'], self.config_output['output_applications']]:
             for e_application in applications.findall('application'):
                 s_name = e_application.find('name').text
+                if s_name == 'any':
+                    # special case: manually build the any object
+                    any_service = Service(s_name, 'any', 'any')
+                    self.service_value_lookup[('any', 'any')].append(any_service)
+                    self.service_name_lookup[s_name] = any_service
+                    continue
                 port = None
                 if e_application.find('term') is not None:
                     # term based application
@@ -95,7 +101,12 @@ class JuniperSRXDriver(BaseDriver):
                         if e_term.find('destination-port') is not None:
                             port = e_term.find('destination-port').text
                             if '-' in port:
-                                port = PortRange(port.split('-')[0], port.split('-')[1])
+                                start = port.split('-')[0]
+                                stop = port.split('-')[1]
+                                if start != stop:
+                                    port = PortRange(port.split('-')[0], port.split('-')[1])
+                                else:
+                                    port = start
                         term = ServiceTerm(t_name, protocol, port)
                         service.add_term(term)
                         self.service_value_lookup[(protocol, port)].append(service)
@@ -138,9 +149,17 @@ class JuniperSRXDriver(BaseDriver):
         # rpc-reply > configuration > security > policies
         policies = ET.fromstring(output.strip())[0][0][0]
 
-        for e_zone_set in policies.findall('policy'):
-            from_zone = e_zone_set.find('from-zone-name').text
-            to_zone = e_zone_set.find('to-zone-name').text
+        for e_zone_set in list(policies):
+            if e_zone_set.tag == 'policy':
+                # regular policy zone set
+                from_zone = e_zone_set.find('from-zone-name').text
+                to_zone = e_zone_set.find('to-zone-name').text
+            elif e_zone_set.tag == 'global':
+                # global policies
+                from_zone = to_zone = 'global'
+            else:
+                # not a policy type element
+                continue
             action = logging = None
             for e_policy in e_zone_set.findall('policy'):
                 name = e_policy.find('name').text
@@ -153,7 +172,7 @@ class JuniperSRXDriver(BaseDriver):
                     elif e_then.tag == 'log':
                         logging = e_then[0].tag
                     else:
-                        # unhandled element
+                        # currently unsupported element
                         pass
                 policy = Policy(name, action, description, logging)
                 policy.add_src_zone(from_zone)

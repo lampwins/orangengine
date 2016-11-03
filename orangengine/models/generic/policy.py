@@ -1,5 +1,5 @@
 
-from itertools import chain
+from collections import Iterable
 
 
 class Policy(object):
@@ -39,14 +39,23 @@ class Policy(object):
 
         if item == 'value':
 
-            if self.name == 'wug_mon_Jackson_jones':
+            if self.name == 'c2e-O365-access':
                 pass
 
-            s_addrs = chain.from_iterable([a.value for a in self.src_addresses])
-            d_addrs = [a.value for a in self.dst_addresses]
-            services = [s.value for s in self.services]
+            s_addrs = set(Policy.__flatten([a.value for a in self.src_addresses]))
+            d_addrs = set(Policy.__flatten([a.value for a in self.dst_addresses]))
+            services = set(Policy.__flatten([s.value for s in self.services]))
 
-            return self.src_zones, self.dst_zones, s_addrs, d_addrs, services, self.action
+            return self.src_zones, self.dst_zones, list(s_addrs), list(d_addrs), list(services), self.action
 
         else:
             raise AttributeError()
+
+    @staticmethod
+    def __flatten(l):
+        for el in l:
+            if isinstance(el, Iterable) and not isinstance(el, basestring) and not isinstance(el, tuple):
+                for sub in Policy.__flatten(el):
+                    yield sub
+            else:
+                yield el

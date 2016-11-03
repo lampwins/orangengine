@@ -30,7 +30,10 @@ class ServiceTerm(object):
     def __getattr__(self, item):
 
         if item == 'value':
-            return self.protocol, self.port
+            if isinstance(self.port, PortRange):
+                return self.protocol, self.port.value
+            else:
+                return self.protocol, self.port
         else:
             raise AttributeError
 
