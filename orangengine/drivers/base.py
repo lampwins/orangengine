@@ -134,32 +134,35 @@ class BaseDriver(object):
         set_list = []
         target_elements = {}
 
-        for k, v in set(locals()) - set(self):
-            if k[v] is not None and k[v]:
-                te_set = set(self.policy_match(tuple_element, action=action))
+        match_elements = locals()
+        match_elements.pop('self')
 
-        if source_zones is not None and source_zones:
-            p_set = set(self.policy_match(source_zones=source_zones, action=action))
-            if len(p_set) > 0:
-                set_list.append(p_set)
-            else:
-                target_elements['source_zones'] = source_zones
+        for key, value in match_elements:
+            if value is not None and value:
+                me_set = set(self.policy_match(key=value, action=action))
 
-        if destination_zones is not None and destination_zones:
-            d_set = set(self.policy_match(destination_zones=destination_zones, action=action))
-            if len(d_set) > 0:
-                set_list.append(d_set)
-            else:
-                target_elements['destination_zones'] = destination_zones
-
-        if source_addresses is not None and source_addresses:
-            set_list.append(set(self.policy_match(source_addresses=source_addresses, action=action)))
-
-        if destination_addresses is not None and destination_addresses:
-            set_list.append(set(self.policy_match(destination_addresses=destination_addresses, action=action)))
-
-        if services is not None and services:
-            set_list.append(set(self.policy_match(services=services, action=action)))
+       # #if source_zones is not None and source_zones:
+       #     p_set = set(self.policy_match(source_zones=source_zones, action=action))
+       #     if len(p_set) > 0:
+       #         set_list.append(p_set)
+       #     else:
+       #         target_elements['source_zones'] = source_zones
+#
+       # if destination_zones is not None and destination_zones:
+       #     d_set = set(self.policy_match(destination_zones=destination_zones, action=action))
+       #     if len(d_set) > 0:
+       #         set_list.append(d_set)
+       #     else:
+       #         target_elements['destination_zones'] = destination_zones
+#
+       # if source_addresses is not None and source_addresses:
+       #     set_list.append(set(self.policy_match(source_addresses=source_addresses, action=action)))
+#
+       # if destination_addresses is not None and destination_addresses:
+       #     set_list.append(set(self.policy_match(destination_addresses=destination_addresses, action=action)))
+#
+       # if services is not None and services:
+       #     set_list.append(set(self.policy_match(services=services, action=action)))
 
         matches = set.intersection(*set_list)
 
