@@ -116,7 +116,12 @@ class JuniperSRXDriver(BaseDriver):
                     if e_application.find('destination-port') is not None:
                         port = e_application.find('destination-port').text
                         if '-' in port:
-                            port = PortRange(port.split('-')[0], port.split('-')[1])
+                            start = port.split('-')[0]
+                            stop = port.split('-')[1]
+                            if start != stop:
+                                port = PortRange(port.split('-')[0], port.split('-')[1])
+                            else:
+                                port = start
                     service = Service(s_name, protocol, port)
                     self.service_value_lookup[(protocol, port)].append(service)
 

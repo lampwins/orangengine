@@ -59,19 +59,21 @@ device = orangengine.dispatch(**srx)
 
 
 # (self.src_zones, self.dst_zones, s_addrs, d_addrs, services, self.action)
+
 t = {
     'source_zones': None,
     'destination_zones': None,
-    'source_addresses': None,
-    'destination_addresses': ['10.7.97.137/32'],
-    'services': None,
+    'source_addresses': ['153.9.243.220/32'],
+    'destination_addresses': ['10.7.66.90/32'],
+    'services': [('tcp', '22'), ('tcp', '3283'), ('tcp', '5900')],
     'action': 'permit'
 }
 
 policies = device.policy_recommendation_match(**t)
 
-for p in policies:
-    print p.name
+if policies:
+    for p in policies[0]:
+        print p.name
 
 
 

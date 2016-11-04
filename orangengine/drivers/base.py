@@ -5,6 +5,9 @@ from netmiko import ConnectHandler
 from multi_key_dict import multi_key_dict
 from collections import defaultdict
 
+from orangengine.errors import ShadowedPolicyError
+from orangengine.errors import DuplicatePolicyError
+
 
 # our device type is different from netmiko's so we must map it here
 NETMIKO_DRIVER_MAPPINGS = {
@@ -97,7 +100,7 @@ class BaseDriver(object):
         def matcher(pattern):
             def f(data):
                 # the tuple we are concerned with is nested in data
-                return all(p is None or r == p for r, p in zip(data[0], pattern))
+                return all(p is None or set(r) == set(p) for r, p in zip(data[0], pattern))
             return f
 
         tuples = filter(matcher((source_zones, destination_zones, source_addresses,
@@ -132,33 +135,50 @@ class BaseDriver(object):
         return those policies that match and the unique "target" element, or None if no match is found
         """
 
+        # must be first
+        match_element_keys = locals()
+        match_element_keys = set(match_element_keys) - {'self', 'match_element_keys'}
+        _locals = locals()
+
         set_list = []
         target_element = {}
 
-        match_elements = locals()
-        match_elements.pop('self')
+        param_dict = {_key: _locals[_key] for _key in match_element_keys}
 
+        # duplicate policy check
+        duplicate_policies = set(self.policy_match(**param_dict))
+        if len(duplicate_policies) != 0:
+            raise DuplicatePolicyError
+
+        # shadow policy check
+        shadow_policies = list(self.policy_contains_match(**param_dict))
+        if len(shadow_policies) != 0:
+            # this is a shadowed policy
+            raise ShadowedPolicyError
+
+        # we now know there is something unique about this policy
         # for each of the named parameters, find policy matches for those parameters
-        for key, value in match_elements:
+        for key in match_element_keys:
             # ignore those parameters which were not passed in, i.e. defaulted to None
-            if value is not None and value:
-                me_set = set(self.policy_match(**{key: value, 'action': action}))
-                if len(me_set) == 0:
+            if _locals[key]:
+                # if a match(s) is found, this element is unique
+                me_set = set(self.policy_match(**{_key: _locals[_key] for _key in match_element_keys
+                                                  if _key is not key}))
+                if len(me_set) != 0:
                     # this is a unique element, thus our target element to append to policy x
-                    target_element[key] = value
-                else:
+                    target_element[key] = _locals[key]
                     # add the match set to the match set list
                     set_list.append(me_set)
 
-        # the intersection of all match sets is the set of all policies that the target element can to appended to
-        matches = set.intersection(*set_list)
-
-        if len(matches) == 0 or len(target_element) > 1:
+        if len(set_list) == 0 or len(target_element) > 1:
             # no valid matches or more than one target element identified
             return None
+        else:
+            # found valid matches
+            # the intersection of all match sets is the set of all policies that the target element can to appended to
+            matches = set.intersection(*set_list)
 
-        # found valid matches
-        return matches, target_element
+            return matches, target_element
 
     @abc.abstractmethod
     def get_addresses(self):

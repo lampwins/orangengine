@@ -38,10 +38,6 @@ class Policy(object):
         """
 
         if item == 'value':
-
-            if self.name == 'c2e-O365-access':
-                pass
-
             s_addrs = set(Policy.__flatten([a.value for a in self.src_addresses]))
             d_addrs = set(Policy.__flatten([a.value for a in self.dst_addresses]))
             services = set(Policy.__flatten([s.value for s in self.services]))
