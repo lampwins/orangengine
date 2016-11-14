@@ -20,9 +20,8 @@ class BaseDriver(object):
 
     def __init__(self, *args, **kwargs):
 
-        # open netmiko connection
-        kwargs['device_type'] = NETMIKO_DRIVER_MAPPINGS[kwargs['device_type']]
-        self.device_conn = ConnectHandler(**kwargs)
+        self._connected = False
+        self.device = None
 
         # share some output between methods
         self.config_output = dict()
@@ -46,11 +45,12 @@ class BaseDriver(object):
         # retrieve, parse, and store objects
         # order matters here as objects have to already
         # exist in the lookup dictionaries
+        self.open_connection(**kwargs)
         self.get_addresses()
         self.get_address_groups()
         self.get_services()
         self.get_service_groups()
-        self.get_polices()
+        self.get_policies()
 
     def _address_lookup_by_name(self, name):
         return self.address_name_lookup[name]
@@ -171,7 +171,7 @@ class BaseDriver(object):
                     set_list.append(me_set)
 
         if len(set_list) == 0 or len(target_element) > 1:
-            # no valid matches or more than one target element identified
+            # no valid matches or more than one target element identified (meaning this will have to be a new policy)
             return None
         else:
             # found valid matches
@@ -179,6 +179,10 @@ class BaseDriver(object):
             matches = set.intersection(*set_list)
 
             return matches, target_element
+
+    @abc.abstractmethod
+    def open_connection(self, *args, **kwargs):
+        raise NotImplementedError()
 
     @abc.abstractmethod
     def get_addresses(self):
@@ -197,5 +201,9 @@ class BaseDriver(object):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def get_polices(self):
+    def get_policies(self):
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def apply_candidate_policy(self, candidate_policy):
         raise NotImplementedError()

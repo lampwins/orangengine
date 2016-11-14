@@ -14,7 +14,7 @@ config = {
     'packages': ['orangengine'],
     'scripts': [],
     'name': 'orangengine',
-    'requirements': ['multi_key_dict', 'netmiko', 'pandevice'],
+    'requires': ['pandevice', 'junos-eznc', 'lxml'],
 }
 
 setup(**config)

@@ -1,5 +1,8 @@
 
+from orangengine.errors import BadCandidatePolicyError
+
 from collections import Iterable
+import re
 
 
 class Policy(object):
@@ -55,3 +58,52 @@ class Policy(object):
                     yield sub
             else:
                 yield el
+
+
+class CandidatePolicy(object):
+    """
+    candidate policy stores the target element(s) or new policy and a list of the best matched policies
+    that can be appended to.
+    """
+
+    def __init__(self, target_dict, matched_policies=None):
+
+        self.target_dict = target_dict
+        self.matched_policies = matched_policies
+        self.policy = None
+        self.new_policy = False
+
+        if len(matched_policies) == 1:
+            # this will be an addendum to an existing policy and there was only one match
+            self.set_base_policy(matched_policies[0])
+        else:
+            self.set_base_policy()
+
+    def set_base_policy(self, matched_policy=None):
+
+        if matched_policy is None:
+            # this will be a new policy
+            # TODO figure out logging default?
+            self.policy = Policy(name=None,
+                                 action=self.target_dict.get('action'),
+                                 description=self.target_dict.get('description'),
+                                 logging=self.target_dict.get('logging', "session-end")
+                                 )
+            self.policy.src_zones = self.target_dict.get('source_zones')
+            self.policy.dst_zones = self.target_dict.get('destination_zones')
+            self.policy.src_addresses = self.target_dict.get('source_addresses')
+            self.policy.dst_addresses = self.target_dict.get('destination_addresses')
+            self.policy.services = self.target_dict.get('services')
+
+            self.new_policy = True
+        else:
+            self.policy = matched_policy
+
+    def set_name(self, name):
+
+        if self.new_policy:
+            pattern = re.compile("^([A-Za-z0-9-_]+)+$")
+            if not pattern.match(name):
+                raise BadCandidatePolicyError('Name contains invalid character(s)')
+            else:
+                self.policy.name = name
