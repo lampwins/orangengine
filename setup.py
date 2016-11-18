@@ -14,7 +14,7 @@ config = {
     'packages': ['orangengine'],
     'scripts': [],
     'name': 'orangengine',
-    'requires': ['pandevice', 'junos-eznc', 'lxml'],
+    'requires': ['pandevice', 'junos-eznc', 'lxml', 'ipaddress'],
 }
 
 setup(**config)

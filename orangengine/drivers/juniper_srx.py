@@ -13,6 +13,7 @@ from orangengine.models import ServiceGroup
 from orangengine.models import Policy
 from orangengine.errors import ConnectionError
 from orangengine.errors import BadCandidatePolicyError
+from orangengine.utils import is_ipv4
 
 from jnpr.junos import Device
 from jnpr.junos.utils.config import Config
@@ -27,6 +28,36 @@ class JuniperSRXDriver(BaseDriver):
         default method is to merge the generated config but 'replace' is used for deletions
         """
 
+        def create_new_address(value):
+            address_element = letree.Element('address')
+            name_element = letree.SubElement(address_element, 'name')
+            if is_ipv4(value):
+                # ip
+                # TODO figure out naming convention
+                name_element.text = 'oe-address-{0}'.format(value.split('/')[0])
+                value_element = letree.SubElement(address_element, 'ip-prefix')
+            else:
+                # dns
+                # TODO figure out naming convention
+                name_element.text = 'oe-fqdn-{0}'.format(value)
+                dns_element = letree.SubElement(address_element, 'dns-name')
+                value_element = letree.SubElement(dns_element, 'name')
+            value_element.text = value
+            return address_element, name_element.text
+
+        def create_new_service(value):
+            service_element = letree.Element('application')
+            name_element = letree.SubElement(service_element, 'name')
+            # TODO figure out naming convention
+            name_element.text = 'oe-service-{0}-{1}'.format(value[0], value[1])
+            protocol_element = letree.SubElement(service_element, 'protocol')
+            protocol_element.text = value[0]
+            source_port_element = letree.SubElement(service_element, 'source-port')
+            source_port_element.text = '1-65535'
+            destination_port_element = letree.SubElement(service_element, 'destination-port')
+            destination_port_element.text = value[1]
+            return service_element, name_element.text
+
         def build_base():
             return letree.Element('configuration').append(
                 letree.Element('security').append(letree.Element('policies')))
@@ -40,17 +71,38 @@ class JuniperSRXDriver(BaseDriver):
             return zone_pair_policy
 
         def build_policy(name, s_addresses, d_addresses, services, action, logging):
+            # base elements
             sub_policy_element = letree.Element('policy')
             name_element = letree.SubElement(sub_policy_element, 'name')
             name_element.text = name
             match_element = letree.SubElement(sub_policy_element, 'match')
+
+            # address elements
             for a_type in [s_addresses, d_addresses]:
                 for a in a_type:
-                    address_element = letree.SubElement(match_element, 'source-address' if a_type is s_addresses else 'destination-address')
-                    address_element.text = a
+                    a_obj = self.get_address_object_by_value(a)
+                    address_element = letree.SubElement(match_element,
+                                                        'source-address' if a_type is s_addresses
+                                                        else 'destination-address')
+                    # check if the address needs to be created
+                    if a_obj is None:
+                        # create a new address element
+                        address_book_element, address_book_element_name = create_new_address(a)
+                        address_book.append(address_book_element)
+                        address_element.text = address_book_element_name
+                    else:
+                        address_element.text = a_obj.name
             for s in services:
+                s_obj = self.get_service_object_by_value_tuple(s)
                 service_element = letree.SubElement(match_element, 'application')
-                service_element.text = s
+                # check if the service needs to be created
+                if s_obj is None:
+                    # create a new service
+                    service_book_element, service_book_element_name = create_new_service(s)
+                    service_book.append(service_book_element)
+                    service_element.text = service_book_element_name
+                else:
+                    service_element.text = s_obj.name
             then_element = letree.SubElement(policy_element, 'then')
             then_element.append(letree.Element(action))
             log_element = letree.SubElement(then_element, 'log')
@@ -75,6 +127,8 @@ class JuniperSRXDriver(BaseDriver):
             raise BadCandidatePolicyError()
 
         configuration = build_base()
+        address_book = []
+        service_book = []
         policy_element = build_policy(c_policy.name, c_policy.src_addresses, c_policy.dst_addresses,
                                       c_policy.services, c_policy.action, c_policy.logging)
 
@@ -210,7 +264,7 @@ class JuniperSRXDriver(BaseDriver):
                         service.add_term(term)
                         self.service_value_lookup[(protocol, port)].append(service)
                 else:
-                    # regular applications
+                    # regular application
                     protocol = e_application.find('protocol').text
                     if e_application.find('destination-port') is not None:
                         port = e_application.find('destination-port').text

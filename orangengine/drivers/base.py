@@ -88,6 +88,24 @@ class BaseDriver(object):
         else:
             return None
 
+    def get_address_object_by_value(self, value):
+        """
+        return a single address object if there is a value stored in dict(address_value_lookup)
+        """
+        if value in self.address_value_lookup.keys():
+            return self.address_value_lookup[value][0]
+        else:
+            return None
+
+    def get_service_object_by_value_tuple(self, value):
+        """
+        return a single service object if there is a value stored in dict(service_value_lookup)
+        """
+        if value in self.service_value_lookup.keys():
+            return self.service_value_lookup[value][0]
+        else:
+            return None
+
     def _add_policy(self, policy):
         self.policies.append(policy)
         self.policy_tuple_lookup.append((policy.value, policy))
