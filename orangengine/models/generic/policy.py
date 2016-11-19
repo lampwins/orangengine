@@ -73,8 +73,9 @@ class CandidatePolicy(object):
         self.policy = None
         self.new_policy = False
 
-        if len(matched_policies) == 1:
+        if matched_policies and len(matched_policies) == 1:
             # this will be an addendum to an existing policy and there was only one match
+            matched_policies = list(matched_policies)
             self.set_base_policy(matched_policies[0])
         else:
             self.set_base_policy()
@@ -96,7 +97,8 @@ class CandidatePolicy(object):
             self.policy.services = self.target_dict.get('services')
 
             self.new_policy = True
-        else:
+
+        elif isinstance(matched_policy, Policy):
             self.policy = matched_policy
 
     def set_name(self, name):

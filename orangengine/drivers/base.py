@@ -1,12 +1,11 @@
 
 import abc
 
-from netmiko import ConnectHandler
-from multi_key_dict import multi_key_dict
 from collections import defaultdict
 
 from orangengine.errors import ShadowedPolicyError
 from orangengine.errors import DuplicatePolicyError
+from orangengine.models.generic import CandidatePolicy
 
 
 # our device type is different from netmiko's so we must map it here
@@ -97,7 +96,7 @@ class BaseDriver(object):
         else:
             return None
 
-    def get_service_object_by_value_tuple(self, value):
+    def get_service_object_by_value(self, value):
         """
         return a single service object if there is a value stored in dict(service_value_lookup)
         """
@@ -146,7 +145,7 @@ class BaseDriver(object):
         for t in tuples:
             yield t[1]
 
-    def policy_recommendation_match(self, source_zones=None, destination_zones=None, source_addresses=None,
+    def policy_candidate_match(self, source_zones=None, destination_zones=None, source_addresses=None,
                                     destination_addresses=None, services=None, action=None):
         """
         determine the best policy to append an element from the match criteria to
@@ -190,13 +189,13 @@ class BaseDriver(object):
 
         if len(set_list) == 0 or len(target_element) > 1:
             # no valid matches or more than one target element identified (meaning this will have to be a new policy)
-            return None
+            return CandidatePolicy(target_dict=target_element)
         else:
             # found valid matches
             # the intersection of all match sets is the set of all policies that the target element can to appended to
             matches = set.intersection(*set_list)
 
-            return matches, target_element
+            return CandidatePolicy(target_dict=target_element, matched_policies=matches)
 
     @abc.abstractmethod
     def open_connection(self, *args, **kwargs):

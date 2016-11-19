@@ -29,6 +29,8 @@ class JuniperSRXDriver(BaseDriver):
         """
 
         def create_new_address(value):
+            if isinstance(value, list):
+                raise ValueError("Creating new address groups is not currently supported")
             address_element = letree.Element('address')
             name_element = letree.SubElement(address_element, 'name')
             if is_ipv4(value):
@@ -46,6 +48,8 @@ class JuniperSRXDriver(BaseDriver):
             return address_element, name_element.text
 
         def create_new_service(value):
+            if isinstance(value, list):
+                raise ValueError("Creating new service groups/termed services is not currently supported")
             service_element = letree.Element('application')
             name_element = letree.SubElement(service_element, 'name')
             # TODO figure out naming convention
@@ -93,7 +97,7 @@ class JuniperSRXDriver(BaseDriver):
                     else:
                         address_element.text = a_obj.name
             for s in services:
-                s_obj = self.get_service_object_by_value_tuple(s)
+                s_obj = self.get_service_object_by_value(s)
                 service_element = letree.SubElement(match_element, 'application')
                 # check if the service needs to be created
                 if s_obj is None:
@@ -109,7 +113,7 @@ class JuniperSRXDriver(BaseDriver):
             log_element.append(letree.Element(logging))
             return policy_element
 
-        # 1 - resolve zones
+        # 1 - resolve zones - TODO is this really needed or can we enforce this as a requirement?
         # 2 - check all elements present (can actually build the policy)
         # 3 - build policy
         # 4 - apply and commit
@@ -212,11 +216,18 @@ class JuniperSRXDriver(BaseDriver):
         for e_address_set in address_sets.findall('address-set'):
             name = e_address_set.find('name').text
             address_set = AddressGroup(name)
+            value_lookup_list = []
             for e in e_address_set.findall('address'):
                 a = e.find('name').text
-                address_set.add(self._address_lookup_by_name(a))
-                self.address_group_value_lookup[a].append(address_set)
+                a_obj = self._address_lookup_by_name(a)
+                address_set.add(a_obj)
+                value_lookup_list.append(a_obj)
+                # self.address_group_value_lookup[a].append(address_set)
 
+            # set the address value lookup to the value of all addresses in the group
+            # self.address_value_lookup[[a.value for a in value_lookup_list]].append(address_set)
+
+            # set he address group name lookup
             self.address_group_name_lookup[name] = address_set
 
     def get_services(self):
@@ -248,6 +259,7 @@ class JuniperSRXDriver(BaseDriver):
                 if e_application.find('term') is not None:
                     # term based application
                     service = Service(s_name)
+                    value_lookup_list = []
                     for e_term in e_application.findall('term'):
                         t_name = e_term.find('name').text
                         protocol = e_term.find('protocol').text
@@ -262,7 +274,12 @@ class JuniperSRXDriver(BaseDriver):
                                     port = start
                         term = ServiceTerm(t_name, protocol, port)
                         service.add_term(term)
-                        self.service_value_lookup[(protocol, port)].append(service)
+                        if isinstance(port, PortRange):
+                            # reset the port value to insert into the lookup dictionary
+                            port = port.value
+                        value_lookup_list.append((protocol, port))
+                    # set the lookup value to the list of all actual services
+                    # self.service_value_lookup[value_lookup_list].append(service)
                 else:
                     # regular application
                     protocol = e_application.find('protocol').text
@@ -290,11 +307,18 @@ class JuniperSRXDriver(BaseDriver):
             for e_service_set in application_sets.findall('application-set'):
                 name = e_service_set.find('name').text
                 service_group = ServiceGroup(name)
+                value_lookup_list = []
                 for e_application in e_service_set.findall('application'):
-                    a = e_application.find('name').text
-                    service_group.add(self._service_lookup_by_name(a))
-                    self.service_group_value_lookup[a].append(service_group)
+                    s = e_application.find('name').text
+                    s_obj = self._service_lookup_by_name(s)
+                    service_group.add(s_obj)
+                    value_lookup_list.append(s_obj)
+                    # self.service_group_value_lookup[a].append(service_group)
 
+                # set the service object lookup value to the value of all containing services
+                # self.service_value_lookup[[s.value for s in value_lookup_list]].append(service_group)
+
+                # service group name lookup
                 self.service_group_name_lookup[name] = service_group
 
     def get_policies(self):
