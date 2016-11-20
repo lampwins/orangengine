@@ -9,7 +9,7 @@ __all__ = ['is_ipv4']
 
 def is_ipv4(value):
     try:
-        ipaddress.ip_network(value)
+        ipaddress.ip_network(unicode(value))
     except Exception:
         return False
     return True

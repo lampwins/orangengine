@@ -189,7 +189,7 @@ class BaseDriver(object):
 
         if len(set_list) == 0 or len(target_element) > 1:
             # no valid matches or more than one target element identified (meaning this will have to be a new policy)
-            return CandidatePolicy(target_dict=target_element)
+            return CandidatePolicy(target_dict=param_dict)
         else:
             # found valid matches
             # the intersection of all match sets is the set of all policies that the target element can to appended to

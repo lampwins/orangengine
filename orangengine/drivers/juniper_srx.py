@@ -63,8 +63,10 @@ class JuniperSRXDriver(BaseDriver):
             return service_element, name_element.text
 
         def build_base():
-            return letree.Element('configuration').append(
-                letree.Element('security').append(letree.Element('policies')))
+            configuration_element = letree.Element('configuration')
+            security_element = letree.SubElement(configuration_element, 'security')
+            security_element.append(letree.Element('policies'))
+            return configuration_element
 
         def build_zone_pair(from_zone_name, to_zone_name):
             zone_pair_policy = letree.Element('policy')
@@ -107,11 +109,11 @@ class JuniperSRXDriver(BaseDriver):
                     service_element.text = service_book_element_name
                 else:
                     service_element.text = s_obj.name
-            then_element = letree.SubElement(policy_element, 'then')
+            then_element = letree.SubElement(sub_policy_element, 'then')
             then_element.append(letree.Element(action))
             log_element = letree.SubElement(then_element, 'log')
             log_element.append(letree.Element(logging))
-            return policy_element
+            return sub_policy_element
 
         # 1 - resolve zones - TODO is this really needed or can we enforce this as a requirement?
         # 2 - check all elements present (can actually build the policy)
@@ -136,9 +138,28 @@ class JuniperSRXDriver(BaseDriver):
         policy_element = build_policy(c_policy.name, c_policy.src_addresses, c_policy.dst_addresses,
                                       c_policy.services, c_policy.action, c_policy.logging)
 
+        # put the tree together
         for s_zone in c_policy.src_zones:
             for d_zone in c_policy.dst_zones:
-                configuration[0][0].append(build_zone_pair(s_zone, d_zone).append(policy_element))
+                # security policy section
+                zone_pair_element = build_zone_pair(s_zone, d_zone)
+                zone_pair_element.append(policy_element)
+                configuration[0][0].append(zone_pair_element)
+                # services
+                if service_book:
+                    config_service_element = letree.Element('applications')
+                    for s_el in service_book:
+                        config_service_element.append(s_el)
+                    configuration.append(config_service_element)
+                # addresses
+                if address_book:
+                    config_address_book_element = letree.Element('address-book')
+                    global_book_element = letree.SubElement(config_address_book_element, 'name')
+                    global_book_element.text = 'global'
+                    for a_el in address_book:
+                        config_address_book_element.append(a_el)
+                    # append within the security element
+                    configuration[0].append(config_address_book_element)
 
         # load the config and commit
         # this is done with a private session
@@ -146,6 +167,7 @@ class JuniperSRXDriver(BaseDriver):
             cu.load(configuration, format='xml', merge=merge)
             cu.pdiff()
             cu.commit()
+        #print letree.tostring(configuration, pretty_print=True)
 
     def open_connection(self, *args, **kwargs):
         """
@@ -175,9 +197,6 @@ class JuniperSRXDriver(BaseDriver):
         """
         retrieve and parse the address objects
         """
-
-        #self.config_output['address_book'] = ET.fromstring(self.device_conn.send_command(
-        #    'show configuration security address-book global | display xml').strip())[0][0][0]
 
         # rpc-reply > configuration > security > address-book
         addresses = self.config_output['address_book']
@@ -236,15 +255,6 @@ class JuniperSRXDriver(BaseDriver):
 
         also handles term based services
         """
-
-        # rpc-reply > configuration > groups > applications
-        #self.config_output['output_junos_default'] = ET.fromstring(self.device_conn.send_command(
-        #    'show configuration groups junos-defaults applications | display xml').strip())[0][0].find(
-        #    'applications')
-
-        # rpc-reply > configuration > applications
-        #self.config_output['output_applications'] = ET.fromstring(self.device_conn.send_command(
-        #    'show configuration applications | display xml').strip())[0][0]
 
         for applications in [self.config_output['output_junos_default'], self.config_output['output_applications']]:
             for e_application in applications.findall('application'):
@@ -325,11 +335,6 @@ class JuniperSRXDriver(BaseDriver):
         """
         retrieve and parse polices
         """
-
-        #output = self.device_conn.send_command('show configuration security policies | display xml')
-
-        # rpc-reply > configuration > security > policies
-        #policies = ET.fromstring(output.strip())[0][0][0]
 
         for e_zone_set in list(self.config_output['policies']):
             if e_zone_set.tag == 'policy':

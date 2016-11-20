@@ -88,7 +88,7 @@ class CandidatePolicy(object):
             self.policy = Policy(name=None,
                                  action=self.target_dict.get('action'),
                                  description=self.target_dict.get('description'),
-                                 logging=self.target_dict.get('logging', "session-end")
+                                 logging=self.target_dict.get('logging', "session-close")
                                  )
             self.policy.src_zones = self.target_dict.get('source_zones')
             self.policy.dst_zones = self.target_dict.get('destination_zones')
