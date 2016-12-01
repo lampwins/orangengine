@@ -33,3 +33,12 @@ class BadCandidatePolicyError(Exception):
 
     def __init__(self, msg='Candidate policy does not meet requirements'):
         self.message = msg
+
+
+class PolicyImplementationError(Exception):
+    """
+    This exception is raised when there is a fatal error preventing a policy from being applied/modified on a device
+    """
+
+    def __init__(self, msg='There is a error preventing this policy from being applied'):
+        self.message = msg

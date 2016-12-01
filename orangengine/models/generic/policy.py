@@ -15,7 +15,7 @@ class Policy(object):
         self.dst_zones = list()
         self.src_addresses = list()
         self.dst_addresses = list()
-        self.services = list()
+        self._services = list()
         self.action = action
         self.description = description
         self.logging = logging
@@ -33,19 +33,31 @@ class Policy(object):
         self.dst_addresses.append(address)
 
     def add_service(self, service):
-        self.services.append(service)
+        self._services.append(service)
 
     def __getattr__(self, item):
         """
         return a tuple representation of the policy with normalized values
         """
 
-        if item == 'value':
-            s_addrs = set(Policy.__flatten([a.value for a in self.src_addresses]))
-            d_addrs = set(Policy.__flatten([a.value for a in self.dst_addresses]))
-            services = set(Policy.__flatten([s.value for s in self.services]))
+        s_addrs = set(Policy.__flatten([a.value for a in self.src_addresses]))
+        d_addrs = set(Policy.__flatten([a.value for a in self.dst_addresses]))
+        services = set(Policy.__flatten([s.value for s in self._services]))
 
+        if item == 'value':
             return self.src_zones, self.dst_zones, list(s_addrs), list(d_addrs), list(services), self.action
+
+        # for use in policy match element reducing
+        elif item == 'source_zones':
+            return self.src_zones
+        elif item == 'destination_zones':
+            return self.dst_zones
+        elif item == 'source_addresses':
+            return s_addrs
+        elif item == 'destination_addresses':
+            return d_addrs
+        elif item == 'services':
+            return services
 
         else:
             raise AttributeError()
@@ -66,23 +78,22 @@ class CandidatePolicy(object):
     that can be appended to.
     """
 
-    def __init__(self, target_dict, matched_policies=None):
+    def __init__(self, target_dict, matched_policies=None, new_policy=False):
 
         self.target_dict = target_dict
         self.matched_policies = matched_policies
         self.policy = None
-        self.new_policy = False
+        self.new_policy = new_policy
 
         if matched_policies and len(matched_policies) == 1:
             # this will be an addendum to an existing policy and there was only one match
-            matched_policies = list(matched_policies)
             self.set_base_policy(matched_policies[0])
         else:
             self.set_base_policy()
 
     def set_base_policy(self, matched_policy=None):
 
-        if matched_policy is None:
+        if self.new_policy or self.matched_policies is None:
             # this will be a new policy
             # TODO figure out logging default?
             self.policy = Policy(name=None,
@@ -100,6 +111,8 @@ class CandidatePolicy(object):
 
         elif isinstance(matched_policy, Policy):
             self.policy = matched_policy
+        else:
+            self.policy = matched_policy[0]
 
     def set_name(self, name):
 

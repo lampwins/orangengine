@@ -21,7 +21,7 @@ t = {
     'destination_zones': ['untrust'],
     'source_addresses': ['153.9.243.220/32'],
     'destination_addresses': ['10.7.66.90/32'],
-    'services': [('tcp', '22'), ('tcp', '3283'), ('tcp', '5900')],
+    'services': [('tcp', '22'), ('tcp', '3283'), ('tcp', '5900'), ('udp', '50002')],
     'action': 'permit'
 }
 

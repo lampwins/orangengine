@@ -41,6 +41,9 @@ class BaseDriver(object):
         self.policies = list()
         self.policy_tuple_lookup = list()
 
+        # zones mappings
+        self.zone_map = dict()
+
         # retrieve, parse, and store objects
         # order matters here as objects have to already
         # exist in the lookup dictionaries
@@ -146,7 +149,7 @@ class BaseDriver(object):
             yield t[1]
 
     def policy_candidate_match(self, source_zones=None, destination_zones=None, source_addresses=None,
-                                    destination_addresses=None, services=None, action=None):
+                               destination_addresses=None, services=None, action=None):
         """
         determine the best policy to append an element from the match criteria to
         return those policies that match and the unique "target" element, or None if no match is found
@@ -189,13 +192,24 @@ class BaseDriver(object):
 
         if len(set_list) == 0 or len(target_element) > 1:
             # no valid matches or more than one target element identified (meaning this will have to be a new policy)
-            return CandidatePolicy(target_dict=param_dict)
+            return CandidatePolicy(target_dict=param_dict, new_policy=True)
         else:
             # found valid matches
             # the intersection of all match sets is the set of all policies that the target element can to appended to
             matches = set.intersection(*set_list)
 
-            return CandidatePolicy(target_dict=target_element, matched_policies=matches)
+            if len(matches) < 1:
+                # there actually were no matches after the intersection (rare)
+                # threat this as a new policy
+                return CandidatePolicy(target_dict=param_dict, new_policy=True)
+
+            # now lets pair down to just the unique elements in question
+            reduced_target_elements = {}
+            for key, value in target_element.iteritems():
+                p_element = getattr(list(matches)[0], key, [])
+                reduced_target_elements[key] = list(set(value) - set(p_element))
+
+            return CandidatePolicy(target_dict=reduced_target_elements, matched_policies=list(matches))
 
     @abc.abstractmethod
     def open_connection(self, *args, **kwargs):
