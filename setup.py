@@ -13,7 +13,7 @@ config = {
     'packages': ['orangengine'],
     'scripts': [],
     'name': 'orangengine',
-    'requires': ['pandevice', 'junos-eznc', 'lxml', 'ipaddress'],
+    'requires': ['pandevice', 'junos-eznc', 'lxml', 'netaddr'],
 }
 
 setup(**config)

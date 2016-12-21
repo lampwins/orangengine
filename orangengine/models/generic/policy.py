@@ -1,8 +1,10 @@
 
 from orangengine.errors import BadCandidatePolicyError
+from orangengine.utils import is_ipv4
 
 from collections import Iterable
 import re
+from netaddr import IPRange, IPNetwork
 
 
 class Policy(object):
@@ -71,6 +73,53 @@ class Policy(object):
             else:
                 yield el
 
+    @staticmethod
+    def __in_network(value, p_value, exact_match=False):
+        """
+
+        """
+
+        # 'any' address is an automatic match
+        if 'any' in p_value:
+            return True
+
+        addresses = [IPRange(a) if '-' in a else IPNetwork(a) for a in value if is_ipv4(a)]
+        fqdns = [a for a in value if not is_ipv4(a)]
+        p_addresses = [IPRange(a) if '-' in a else IPNetwork(a) for a in value if is_ipv4(a)]
+        p_fqdns = [a for a in p_value if not is_ipv4(a)]
+
+        # network containment implies exact match... i think?
+        addr_result = any(a == b or a in b for a in addresses for b in p_addresses)
+
+        # now match the fqdns
+        if exact_match:
+            fqdn_result = set(fqdns) == set(p_fqdns)
+        else:
+            fqdn_result = set(p_fqdns).issubset(set(fqdns))
+
+        return addr_result and fqdn_result
+
+    def match(self, match_criteria, exact=False, match_containing_networks=True):
+        """
+        determine if self is a match for the given criteria
+        """
+        for key, value in match_criteria.iteritems():
+            if value is None:
+                # this key was included but the value is None, so skip it
+                continue
+
+            p_value = getattr(self, key, [])
+
+            if match_containing_networks and key in ['source_addresses', 'destination_addresses']:
+                if not self.__in_network(value, p_value, exact_match=True):
+                    return False
+            elif exact and not set(p_value) == set(value):
+                return False
+            elif not exact and not set(p_value).issubset(set(value)):
+                return False
+
+        return True
+
 
 class CandidatePolicy(object):
     """
@@ -116,6 +165,7 @@ class CandidatePolicy(object):
 
     def set_name(self, name):
 
+        # if this is a new policy, set the name otherwise do nothing
         if self.new_policy:
             pattern = re.compile("^([A-Za-z0-9-_]+)+$")
             if not pattern.match(name):

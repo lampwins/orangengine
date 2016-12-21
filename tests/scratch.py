@@ -17,19 +17,22 @@ device = orangengine.dispatch(**srx)
 
 
 t = {
-    'source_zones': ['trust'],
+    'source_zones': ['untrust'],
     'destination_zones': ['untrust'],
-    'source_addresses': ['153.9.243.220/32'],
-    'destination_addresses': ['10.7.66.90/32'],
-    'services': [('tcp', '22'), ('tcp', '3283'), ('tcp', '5900'), ('udp', '50002')],
+    'source_addresses': ['10.10.10.10/32'],
+    'destination_addresses': ['153.9.252.252/32'],
+    'services': [('tcp', '80')],
     'action': 'permit'
 }
 
-candidate_policy = device.policy_candidate_match(**t)
+candidate_policy = device.policy_candidate_match(t)
 
-candidate_policy.set_name('test-policy')
+candidate_policy.set_name('the-new-policy')
+
 device.apply_candidate_policy(candidate_policy)
 
+for p in candidate_policy:
+    print p.name
 
 
 

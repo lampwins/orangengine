@@ -37,14 +37,15 @@ class JuniperSRXDriver(BaseDriver):
                 # ip
                 # TODO figure out naming convention
                 name_element_text = 'oe-address-{0}'.format(a_value.split('/')[0])
+                name_element = create_element('name', text=name_element_text, parent=address_element)
                 create_element('ip-prefix', text=a_value, parent=address_element)
             else:
                 # dns
                 # TODO figure out naming convention
                 name_element_text = 'oe-fqdn-{0}'.format(a_value)
+                name_element = create_element('name', text=name_element_text, parent=address_element)
                 dns_element = create_element('dns-name', parent=address_element)
                 create_element('name', text=a_value, parent=dns_element)
-            name_element = create_element('name', text=name_element_text, parent=address_element)
             return address_element, name_element.text
 
         def create_new_service(s_value):
@@ -197,12 +198,14 @@ class JuniperSRXDriver(BaseDriver):
                     configuration[0].append(config_address_book_element)
 
         # load the config and commit
-        # this is done with a private session
+        # this is done with a private session, meaning if there are uncommitted
+        # changes on the box, this load will fail
+        # print letree.tostring(configuration, pretty_print=True)
         with Config(self.device, mode='private') as cu:
             cu.load(configuration, format='xml', merge=merge)
             cu.pdiff()
             cu.commit()
-        #print letree.tostring(configuration, pretty_print=True)
+        # print letree.tostring(configuration, pretty_print=True)
 
     def open_connection(self, *args, **kwargs):
         """

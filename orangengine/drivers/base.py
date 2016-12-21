@@ -6,6 +6,9 @@ from collections import defaultdict
 from orangengine.errors import ShadowedPolicyError
 from orangengine.errors import DuplicatePolicyError
 from orangengine.models.generic import CandidatePolicy
+from orangengine.utils import is_ipv4
+
+from netaddr import IPNetwork
 
 
 # our device type is different from netmiko's so we must map it here
@@ -110,89 +113,51 @@ class BaseDriver(object):
 
     def _add_policy(self, policy):
         self.policies.append(policy)
-        self.policy_tuple_lookup.append((policy.value, policy))
+        # self.policy_tuple_lookup.append((policy.value, policy))
 
-    def policy_match(self, source_zones=None, destination_zones=None, source_addresses=None,
-                     destination_addresses=None, services=None, action=None):
+    def policy_match(self, match_criteria, match_containing_networks=True, exact=False, policy_list=None):
         """
         match policy tuples exactly by match criteria (also a tuple) and return those policies
         """
-        def matcher(pattern):
-            def f(data):
-                # the tuple we are concerned with is nested in data
-                return all(p is None or set(r) == set(p) for r, p in zip(data[0], pattern))
-            return f
+        policies = [p for p in self.policies if p.match(match_criteria, exact=exact,
+                                                        match_containing_networks=match_containing_networks)]
 
-        tuples = filter(matcher((source_zones, destination_zones, source_addresses,
-                                 destination_addresses, services, action)), self.policy_tuple_lookup)
+        return policies
 
-        for t in tuples:
-            yield t[1]
-
-    def policy_contains_match(self, source_zones=None, destination_zones=None, source_addresses=None,
-                              destination_addresses=None, services=None, action=None):
-        """
-        match policy tuples that contain match criteria (also a tuple) and return those policies
-        does not check ip network containment, only whether or not the elements are in the policy
-        """
-
-        def matcher(pattern):
-            def f(data):
-                # the tuple we are concerned with is nested in data
-                return all(p is None or set(r).intersection(set(p)) == set(p) for r, p in zip(data[0], pattern))
-            return f
-
-        tuples = filter(matcher((source_zones, destination_zones, source_addresses,
-                                 destination_addresses, services, action)), self.policy_tuple_lookup)
-
-        for t in tuples:
-            yield t[1]
-
-    def policy_candidate_match(self, source_zones=None, destination_zones=None, source_addresses=None,
-                               destination_addresses=None, services=None, action=None):
+    def policy_candidate_match(self, match_criteria):
         """
         determine the best policy to append an element from the match criteria to
         return those policies that match and the unique "target" element, or None if no match is found
         """
 
-        # must be first
-        match_element_keys = locals()
-        match_element_keys = set(match_element_keys) - {'self', 'match_element_keys'}
-        _locals = locals()
-
         set_list = []
         target_element = {}
 
-        param_dict = {_key: _locals[_key] for _key in match_element_keys}
-
-        # duplicate policy check
-        duplicate_policies = set(self.policy_match(**param_dict))
-        if len(duplicate_policies) != 0:
-            raise DuplicatePolicyError
-
-        # shadow policy check
-        shadow_policies = list(self.policy_contains_match(**param_dict))
+        # shadow policy check (shadow implicitly includes duplicates)
+        shadow_policies = list(self.policy_match(match_criteria))
         if len(shadow_policies) != 0:
             # this is a shadowed policy
             raise ShadowedPolicyError
 
         # we now know there is something unique about this policy
         # for each of the named parameters, find policy matches for those parameters
-        for key in match_element_keys:
+        for key, value in match_criteria.iteritems():
             # ignore those parameters which were not passed in, i.e. defaulted to None
-            if _locals[key]:
-                # if a match(s) is found, this element is unique
-                me_set = set(self.policy_match(**{_key: _locals[_key] for _key in match_element_keys
-                                                  if _key is not key}))
-                if len(me_set) != 0:
-                    # this is a unique element, thus our target element to append to policy x
-                    target_element[key] = _locals[key]
-                    # add the match set to the match set list
-                    set_list.append(me_set)
+            if value is None:
+                continue
+
+            # if a match(s) is found, this element is unique
+            me_set = set(self.policy_match({_key: match_criteria[_key] for _key in match_criteria.keys()
+                                            if _key is not key}))
+            if len(me_set) != 0:
+                # this is a unique element, thus our target element to append to policy x
+                target_element[key] = match_criteria[key]
+                # add the match set to the match set list
+                set_list.append(me_set)
 
         if len(set_list) == 0 or len(target_element) > 1:
             # no valid matches or more than one target element identified (meaning this will have to be a new policy)
-            return CandidatePolicy(target_dict=param_dict, new_policy=True)
+            return CandidatePolicy(target_dict=match_criteria, new_policy=True)
         else:
             # found valid matches
             # the intersection of all match sets is the set of all policies that the target element can to appended to
@@ -201,7 +166,7 @@ class BaseDriver(object):
             if len(matches) < 1:
                 # there actually were no matches after the intersection (rare)
                 # threat this as a new policy
-                return CandidatePolicy(target_dict=param_dict, new_policy=True)
+                return CandidatePolicy(target_dict=match_criteria, new_policy=True)
 
             # now lets pair down to just the unique elements in question
             reduced_target_elements = {}
