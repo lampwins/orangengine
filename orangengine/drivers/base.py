@@ -115,7 +115,7 @@ class BaseDriver(object):
         self.policies.append(policy)
         # self.policy_tuple_lookup.append((policy.value, policy))
 
-    def policy_match(self, match_criteria, match_containing_networks=True, exact=False, policy_list=None):
+    def policy_match(self, match_criteria, match_containing_networks=True, exact=False):
         """
         match policy tuples exactly by match criteria (also a tuple) and return those policies
         """

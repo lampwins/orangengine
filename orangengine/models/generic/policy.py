@@ -79,13 +79,15 @@ class Policy(object):
 
         """
 
-        # 'any' address is an automatic match
-        if 'any' in p_value:
+        # 'any' address is an automatic match if we are exact
+        if exact_match and 'any' in p_value:
             return True
 
-        addresses = [IPRange(a) if '-' in a else IPNetwork(a) for a in value if is_ipv4(a)]
+        addresses = [IPRange(a.split('-')[0], a.split('-')[1]) if '-' in a else IPNetwork(a)
+                     for a in value if is_ipv4(a)]
         fqdns = [a for a in value if not is_ipv4(a)]
-        p_addresses = [IPRange(a) if '-' in a else IPNetwork(a) for a in value if is_ipv4(a)]
+        p_addresses = [IPRange(a.split('-')[0], a.split('-')[1]) if '-' in a else IPNetwork(a)
+                       for a in p_value if is_ipv4(a)]
         p_fqdns = [a for a in p_value if not is_ipv4(a)]
 
         # network containment implies exact match... i think?
