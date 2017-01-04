@@ -157,7 +157,7 @@ class BaseDriver(object):
 
         if len(set_list) == 0 or len(target_element) > 1:
             # no valid matches or more than one target element identified (meaning this will have to be a new policy)
-            return CandidatePolicy(target_dict=match_criteria, new_policy=True)
+            return CandidatePolicy(target_dict=match_criteria, method=CandidatePolicy.NEW_POLICY)
         else:
             # found valid matches
             # the intersection of all match sets is the set of all policies that the target element can to appended to
@@ -166,7 +166,7 @@ class BaseDriver(object):
             if len(matches) < 1:
                 # there actually were no matches after the intersection (rare)
                 # threat this as a new policy
-                return CandidatePolicy(target_dict=match_criteria, new_policy=True)
+                return CandidatePolicy(target_dict=match_criteria, method=CandidatePolicy.NEW_POLICY)
 
             # now lets pair down to just the unique elements in question
             reduced_target_elements = {}
@@ -174,7 +174,8 @@ class BaseDriver(object):
                 p_element = getattr(list(matches)[0], key, [])
                 reduced_target_elements[key] = list(set(value) - set(p_element))
 
-            return CandidatePolicy(target_dict=reduced_target_elements, matched_policies=list(matches))
+            return CandidatePolicy(target_dict=reduced_target_elements, matched_policies=list(matches),
+                                   method=CandidatePolicy.APPEND_POLICY)
 
     @abc.abstractmethod
     def open_connection(self, *args, **kwargs):

@@ -45,7 +45,15 @@ class Service(object):
 
         self.name = name
         self.protocol = protocol
-        self.port = port
+        if port is not None and '-' in port:
+            start = port.split('-')[0]
+            stop = port.split('-')[1]
+            if start != stop:
+                self.port = PortRange(start, stop)
+            else:
+                self.port = start
+        else:
+            self.port = port
         self.terms = list()
 
     def add_term(self, term):

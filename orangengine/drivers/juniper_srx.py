@@ -11,10 +11,11 @@ from orangengine.models import ServiceTerm
 from orangengine.models import PortRange
 from orangengine.models import ServiceGroup
 from orangengine.models import Policy
+from orangengine.models import CandidatePolicy
 from orangengine.errors import ConnectionError
 from orangengine.errors import BadCandidatePolicyError
 from orangengine.errors import PolicyImplementationError
-from orangengine.utils import is_ipv4
+from _juniper_utils import build_base, create_element, build_zone_pair, create_new_address, create_new_service
 
 from jnpr.junos import Device
 from jnpr.junos.utils.config import Config
@@ -28,49 +29,6 @@ class JuniperSRXDriver(BaseDriver):
         resolve the candidate policy and apply it to the device
         default method is to merge the generated config but 'replace' is used for deletions
         """
-
-        def create_new_address(a_value):
-            if isinstance(a_value, list):
-                raise ValueError("Creating new address groups is not currently supported")
-            address_element = create_element('address')
-            if is_ipv4(a_value):
-                # ip
-                # TODO figure out naming convention
-                name_element_text = 'oe-address-{0}'.format(a_value.split('/')[0])
-                name_element = create_element('name', text=name_element_text, parent=address_element)
-                create_element('ip-prefix', text=a_value, parent=address_element)
-            else:
-                # dns
-                # TODO figure out naming convention
-                name_element_text = 'oe-fqdn-{0}'.format(a_value)
-                name_element = create_element('name', text=name_element_text, parent=address_element)
-                dns_element = create_element('dns-name', parent=address_element)
-                create_element('name', text=a_value, parent=dns_element)
-            return address_element, name_element.text
-
-        def create_new_service(s_value):
-            if isinstance(s_value, list):
-                raise ValueError("Creating new service groups/termed services is not currently supported")
-            service_element = create_element('application')
-            # TODO figure out naming convention
-            name_element_text = 'oe-service-{0}-{1}'.format(s_value[0], s_value[1])
-            name_element = create_element('name', text=name_element_text, parent=service_element)
-            create_element('protocol', text=s_value[0], parent=service_element)
-            create_element('source-port', text='1-65535', parent=service_element)
-            create_element('destination-port', text=s_value[1], parent=service_element)
-            return service_element, name_element.text
-
-        def build_base():
-            configuration_element = create_element('configuration')
-            security_element = create_element('security', parent=configuration_element)
-            create_element('policies', parent=security_element)
-            return configuration_element
-
-        def build_zone_pair(from_zone_name, to_zone_name):
-            zone_pair_policy = create_element('policy')
-            create_element('from-zone-name', text=from_zone_name, parent=zone_pair_policy)
-            create_element('to-zone-name', text=to_zone_name, parent=zone_pair_policy)
-            return zone_pair_policy
 
         def get_or_create_address_element(address):
             a_obj = self.get_address_object_by_value(address)
@@ -93,16 +51,6 @@ class JuniperSRXDriver(BaseDriver):
                 return service_book_element_name
             else:
                 return s_obj.name
-
-        def create_element(tag, text=None, parent=None):
-            # create an ambiguous element
-            if parent is not None:
-                e = letree.SubElement(parent, tag)
-            else:
-                e = letree.Element(tag)
-            if text:
-                e.text = text
-            return e
 
         def build_policy(name, s_addresses, d_addresses, services, action, logging):
             # base elements
@@ -142,7 +90,7 @@ class JuniperSRXDriver(BaseDriver):
         address_book = []
         service_book = []
 
-        if candidate_policy.new_policy:
+        if candidate_policy.method is CandidatePolicy.NEW_POLICY:
             # this will be a new policy
 
             # check if we have a valid new policy

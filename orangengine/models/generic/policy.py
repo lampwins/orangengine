@@ -123,18 +123,30 @@ class Policy(object):
         return True
 
 
+CANDIDATE_POLICY_METHOD = {
+    'new_policy': 1,
+    'append': 2,
+    'tag': 3,
+}
+
+
 class CandidatePolicy(object):
     """
     candidate policy stores the target element(s) or new policy and a list of the best matched policies
     that can be appended to.
     """
 
-    def __init__(self, target_dict, matched_policies=None, new_policy=False):
+    # method constants
+    NEW_POLICY = 1
+    APPEND_POLICY = 2
+    TAG_OBJECT = 3
+
+    def __init__(self, target_dict, matched_policies=None, method=NEW_POLICY):
 
         self.target_dict = target_dict
         self.matched_policies = matched_policies
         self.policy = None
-        self.new_policy = new_policy
+        self.method = method
 
         if matched_policies and len(matched_policies) == 1:
             # this will be an addendum to an existing policy and there was only one match
@@ -144,7 +156,7 @@ class CandidatePolicy(object):
 
     def set_base_policy(self, matched_policy=None):
 
-        if self.new_policy or self.matched_policies is None:
+        if self.method is self.NEW_POLICY or self.matched_policies is None:
             # this will be a new policy
             # TODO figure out logging default?
             self.policy = Policy(name=None,
@@ -158,7 +170,7 @@ class CandidatePolicy(object):
             self.policy.dst_addresses = self.target_dict.get('destination_addresses')
             self.policy.services = self.target_dict.get('services')
 
-            self.new_policy = True
+            self.method = self.NEW_POLICY
 
         elif isinstance(matched_policy, Policy):
             self.policy = matched_policy
@@ -168,7 +180,7 @@ class CandidatePolicy(object):
     def set_name(self, name):
 
         # if this is a new policy, set the name otherwise do nothing
-        if self.new_policy:
+        if self.method is self.NEW_POLICY:
             pattern = re.compile("^([A-Za-z0-9-_]+)+$")
             if not pattern.match(name):
                 raise BadCandidatePolicyError('Name contains invalid character(s)')
