@@ -13,7 +13,8 @@ from orangengine.models import ServiceGroup
 from orangengine.models import Policy
 from orangengine.errors import ConnectionError
 from orangengine.errors import BadCandidatePolicyError
-from _juniper_utils import create_new_address, create_new_service, build_base, build_zone_pair
+from orangengine.errors import PolicyImplementationError
+from orangengine.utils import is_ipv4
 
 from jnpr.junos import Device
 from jnpr.junos.utils.config import Config
@@ -28,43 +29,103 @@ class JuniperSRXDriver(BaseDriver):
         default method is to merge the generated config but 'replace' is used for deletions
         """
 
+        def create_new_address(a_value):
+            if isinstance(a_value, list):
+                raise ValueError("Creating new address groups is not currently supported")
+            address_element = create_element('address')
+            if is_ipv4(a_value):
+                # ip
+                # TODO figure out naming convention
+                name_element_text = 'oe-address-{0}'.format(a_value.split('/')[0])
+                name_element = create_element('name', text=name_element_text, parent=address_element)
+                create_element('ip-prefix', text=a_value, parent=address_element)
+            else:
+                # dns
+                # TODO figure out naming convention
+                name_element_text = 'oe-fqdn-{0}'.format(a_value)
+                name_element = create_element('name', text=name_element_text, parent=address_element)
+                dns_element = create_element('dns-name', parent=address_element)
+                create_element('name', text=a_value, parent=dns_element)
+            return address_element, name_element.text
+
+        def create_new_service(s_value):
+            if isinstance(s_value, list):
+                raise ValueError("Creating new service groups/termed services is not currently supported")
+            service_element = create_element('application')
+            # TODO figure out naming convention
+            name_element_text = 'oe-service-{0}-{1}'.format(s_value[0], s_value[1])
+            name_element = create_element('name', text=name_element_text, parent=service_element)
+            create_element('protocol', text=s_value[0], parent=service_element)
+            create_element('source-port', text='1-65535', parent=service_element)
+            create_element('destination-port', text=s_value[1], parent=service_element)
+            return service_element, name_element.text
+
+        def build_base():
+            configuration_element = create_element('configuration')
+            security_element = create_element('security', parent=configuration_element)
+            create_element('policies', parent=security_element)
+            return configuration_element
+
+        def build_zone_pair(from_zone_name, to_zone_name):
+            zone_pair_policy = create_element('policy')
+            create_element('from-zone-name', text=from_zone_name, parent=zone_pair_policy)
+            create_element('to-zone-name', text=to_zone_name, parent=zone_pair_policy)
+            return zone_pair_policy
+
+        def get_or_create_address_element(address):
+            a_obj = self.get_address_object_by_value(address)
+            if a_obj is None:
+                # need to create a new one
+                address_book_element, address_book_element_name = create_new_address(address)
+                # transparently append the new entry to the list
+                address_book.append(address_book_element)
+                return address_book_element_name
+            else:
+                return a_obj.name
+
+        def get_or_create_service_element(service):
+            s_obj = self.get_service_object_by_value(service)
+            if s_obj is None:
+                # need to create a new one
+                service_book_element, service_book_element_name = create_new_service(service)
+                # transparently append the new entry to the list
+                service_book.append(service_book_element)
+                return service_book_element_name
+            else:
+                return s_obj.name
+
+        def create_element(tag, text=None, parent=None):
+            # create an ambiguous element
+            if parent is not None:
+                e = letree.SubElement(parent, tag)
+            else:
+                e = letree.Element(tag)
+            if text:
+                e.text = text
+            return e
+
         def build_policy(name, s_addresses, d_addresses, services, action, logging):
             # base elements
-            sub_policy_element = letree.Element('policy')
-            name_element = letree.SubElement(sub_policy_element, 'name')
-            name_element.text = name
-            match_element = letree.SubElement(sub_policy_element, 'match')
+            sub_policy_element = create_element('policy')
+            create_element('name', text=name, parent=sub_policy_element)
+            p_match_element = create_element('match', parent=sub_policy_element)
 
             # address elements
             for a_type in [s_addresses, d_addresses]:
-                for a in a_type:
-                    a_obj = self.get_address_object_by_value(a)
-                    address_element = letree.SubElement(match_element,
-                                                        'source-address' if a_type is s_addresses
-                                                        else 'destination-address')
-                    # check if the address needs to be created
-                    if a_obj is None:
-                        # create a new address element
-                        address_book_element, address_book_element_name = create_new_address(a)
-                        address_book.append(address_book_element)
-                        address_element.text = address_book_element_name
-                    else:
-                        address_element.text = a_obj.name
-            for s in services:
-                s_obj = self.get_service_object_by_value(s)
-                service_element = letree.SubElement(match_element, 'application')
-                # check if the service needs to be created
-                if s_obj is None:
-                    # create a new service
-                    service_book_element, service_book_element_name = create_new_service(s)
-                    service_book.append(service_book_element)
-                    service_element.text = service_book_element_name
-                else:
-                    service_element.text = s_obj.name
-            then_element = letree.SubElement(sub_policy_element, 'then')
-            then_element.append(letree.Element(action))
-            log_element = letree.SubElement(then_element, 'log')
-            log_element.append(letree.Element(logging))
+                for _a in a_type:
+                    __a_type = 'source-address' if a_type is s_addresses else 'destination-address'
+                    create_element(__a_type, text=get_or_create_address_element(_a), parent=p_match_element)
+
+            # service elements
+            for _s in services:
+                create_element('application', text=get_or_create_service_element(_s), parent=p_match_element)
+
+            # action and logging
+            then_element = create_element('then', parent=sub_policy_element)
+            create_element(action, parent=then_element)
+            log_element = create_element('log', parent=then_element)
+            create_element(logging, parent=log_element)
+
             return sub_policy_element
 
         # 1 - resolve zones - TODO is this really needed or can we enforce this as a requirement?
@@ -77,18 +138,41 @@ class JuniperSRXDriver(BaseDriver):
 
         c_policy = candidate_policy.policy
 
-        if c_policy.src_zones is None or c_policy.dst_zones is None or c_policy.src_addresses is None \
-           or c_policy.dst_addresses is None or c_policy.services is None or c_policy.action is None \
-           or c_policy.name is None:
-
-            # missing elements
-            raise BadCandidatePolicyError()
-
         configuration = build_base()
         address_book = []
         service_book = []
-        policy_element = build_policy(c_policy.name, c_policy.src_addresses, c_policy.dst_addresses,
-                                      c_policy.services, c_policy.action, c_policy.logging)
+
+        if candidate_policy.new_policy:
+            # this will be a new policy
+
+            # check if we have a valid new policy
+            if c_policy.src_zones is None or c_policy.dst_zones is None or c_policy.src_addresses is None \
+                    or c_policy.dst_addresses is None or c_policy.services is None or c_policy.action is None \
+                    or c_policy.name is None:
+                # missing elements
+                raise BadCandidatePolicyError()
+
+            policy_element = build_policy(c_policy.name, c_policy.src_addresses, c_policy.dst_addresses,
+                                          c_policy.services, c_policy.action, c_policy.logging)
+        else:
+            # we are adding new element(s) to an existing policy
+
+            # base elements
+            policy_element = create_element('policy')
+            create_element('name', text=c_policy.name, parent=policy_element)
+            match_element = create_element('match', parent=policy_element)
+
+            # TODO currently only address and service additions are supported
+            for k, v in candidate_policy.target_dict.iteritems():
+                if k == 'source-addresses' or k == 'destination-address':
+                    for a in v:
+                        _a_type = 'source-address' if k is 'source-addresses' else 'destination-address'
+                        create_element(_a_type, text=get_or_create_address_element(a), parent=match_element)
+                elif k == 'services':
+                    for s in v:
+                        create_element('application', text=get_or_create_service_element(s), parent=match_element)
+                else:
+                    raise PolicyImplementationError('Currently only address and service additions are supported.')
 
         # put the tree together
         for s_zone in c_policy.src_zones:
@@ -114,12 +198,14 @@ class JuniperSRXDriver(BaseDriver):
                     configuration[0].append(config_address_book_element)
 
         # load the config and commit
-        # this is done with a private session
+        # this is done with a private session, meaning if there are uncommitted
+        # changes on the box, this load will fail
+        # print letree.tostring(configuration, pretty_print=True)
         with Config(self.device, mode='private') as cu:
             cu.load(configuration, format='xml', merge=merge)
             cu.pdiff()
             cu.commit()
-        #print letree.tostring(configuration, pretty_print=True)
+        # print letree.tostring(configuration, pretty_print=True)
 
     def open_connection(self, *args, **kwargs):
         """
@@ -133,15 +219,20 @@ class JuniperSRXDriver(BaseDriver):
 
         # TODO: fix this xml library conversion nonsense
         # get config sections
+
+        # TODO: needs xml refactoring
         self.config_output['policies'] = ET.fromstring(letree.tostring(self.device.rpc.get_config(
             filter_xml=letree.XML('<configuration><security><policies></policies></security></configuration>'))))[0][0]
 
+        # TODO: needs xml refactoring
         self.config_output['address_book'] = ET.fromstring(letree.tostring(self.device.rpc.get_config(
             filter_xml=letree.XML('<configuration><security><address-book><global /></address-book></security></configuration>'))))[0][0]
 
+        # TODO: needs xml refactoring
         self.config_output['output_junos_default'] = ET.fromstring(letree.tostring(self.device.rpc.get_config(
             filter_xml=letree.XML('<configuration><groups><name>junos-defaults</name><applications></applications></groups></configuration>'))))[0].find('applications')
 
+        # TODO: needs xml refactoring
         self.config_output['output_applications'] = ET.fromstring(letree.tostring(self.device.rpc.get_config(
             filter_xml=letree.XML('<configuration><applications></applications></configuration>'))))[0]
 
@@ -227,13 +318,6 @@ class JuniperSRXDriver(BaseDriver):
                         protocol = e_term.find('protocol').text
                         if e_term.find('destination-port') is not None:
                             port = e_term.find('destination-port').text
-                            if '-' in port:
-                                start = port.split('-')[0]
-                                stop = port.split('-')[1]
-                                if start != stop:
-                                    port = PortRange(port.split('-')[0], port.split('-')[1])
-                                else:
-                                    port = start
                         term = ServiceTerm(t_name, protocol, port)
                         service.add_term(term)
                         if isinstance(port, PortRange):
@@ -247,13 +331,6 @@ class JuniperSRXDriver(BaseDriver):
                     protocol = e_application.find('protocol').text
                     if e_application.find('destination-port') is not None:
                         port = e_application.find('destination-port').text
-                        if '-' in port:
-                            start = port.split('-')[0]
-                            stop = port.split('-')[1]
-                            if start != stop:
-                                port = PortRange(port.split('-')[0], port.split('-')[1])
-                            else:
-                                port = start
                     service = Service(s_name, protocol, port)
                     self.service_value_lookup[(protocol, port)].append(service)
 
