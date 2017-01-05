@@ -17,6 +17,16 @@ NETMIKO_DRIVER_MAPPINGS = {
     'palo_alto_panorama': 'paloalto_panos',
 }
 
+ALLOWED_POLICY_KEYS = [
+    'source_zones',
+    'destination_zones',
+    'source_addresses',
+    'destination_addresses',
+    'services',
+    'action',
+    'logging',
+]
+
 
 class BaseDriver(object):
 
@@ -115,10 +125,17 @@ class BaseDriver(object):
         self.policies.append(policy)
         # self.policy_tuple_lookup.append((policy.value, policy))
 
+    @staticmethod
+    def __policy_key_check(keys):
+        if not all(k in ALLOWED_POLICY_KEYS for k in keys):
+            raise ValueError('Invalid key in match criteria.')
+
     def policy_match(self, match_criteria, match_containing_networks=True, exact=False):
         """
         match policy tuples exactly by match criteria (also a tuple) and return those policies
         """
+        self.__policy_key_check(match_criteria.keys())
+
         policies = [p for p in self.policies if p.match(match_criteria, exact=exact,
                                                         match_containing_networks=match_containing_networks)]
 
@@ -129,6 +146,7 @@ class BaseDriver(object):
         determine the best policy to append an element from the match criteria to
         return those policies that match and the unique "target" element, or None if no match is found
         """
+        self.__policy_key_check(match_criteria.keys())
 
         set_list = []
         target_element = {}

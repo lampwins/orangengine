@@ -22,7 +22,7 @@ t = {
     'source_addresses': ['153.9.243.220/32'],
     'destination_addresses': ['10.7.66.90/32'],
     'services': [('tcp', '80')],
-    'action': 'permit'
+    'action': 'permit',
 }
 
 candidate_policy = device.policy_candidate_match(t)

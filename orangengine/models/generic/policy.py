@@ -117,7 +117,7 @@ class Policy(object):
                     return False
             elif exact and not set(p_value) == set(value):
                 return False
-            elif not exact and not set(p_value).issubset(set(value)):
+            elif not exact and not set(value).issubset(set(p_value)):
                 return False
 
         return True
