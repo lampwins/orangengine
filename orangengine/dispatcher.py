@@ -5,7 +5,7 @@ from orangengine.drivers import PaloAltoPanoramaDriver
 
 DRIVER_MAPPINGS = {
     'juniper_srx': JuniperSRXDriver,
-    'palo_alo_panorama': PaloAltoPanoramaDriver,
+    'palo_alto_panorama': PaloAltoPanoramaDriver,
 }
 
 platforms = list(DRIVER_MAPPINGS.keys())
