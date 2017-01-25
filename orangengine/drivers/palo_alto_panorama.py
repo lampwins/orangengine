@@ -74,11 +74,11 @@ class PaloAltoPanoramaDriver(BaseDriver):
         rules.extend(self.pano_post_rulebase.findall(policies.SecurityRule))
         rules.extend(self.pano_pre_rulebase.findall(policies.SecurityRule))
 
-        for rule in rules:
-            policy = PaloAltoPolicy(rule)
-            for a in
-
-            self.policies.append(rule)
+        #for rule in rules:
+        #    policy = PaloAltoPolicy(rule)
+        #    for a in
+        #
+        #    self.policies.append(rule)
 
     def get_addresses(self):
 
