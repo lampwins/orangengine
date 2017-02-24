@@ -21,3 +21,9 @@ class Address(object):
             return self.value
         else:
             raise AttributeError
+
+    def table_value(self, with_names):
+        if with_names:
+            return self.name + " - " + self.value
+        else:
+            return self.value

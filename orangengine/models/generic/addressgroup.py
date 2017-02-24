@@ -20,3 +20,9 @@ class AddressGroup(object):
             return [a.value for a in self.elements]
         else:
             raise AttributeError
+
+    def table_value(self, with_names):
+        value = "Group: " + self.name + "\n"
+        for a in self.elements:
+            value = value + "   " + a.table_value(with_names) + "\n"
+        return value

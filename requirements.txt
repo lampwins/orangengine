@@ -1,0 +1,5 @@
+terminaltables
+pandevice==0.3.5
+junos-eznc>=2.0.1
+netaddr>=0.7.18
+lxml>=3.6.0

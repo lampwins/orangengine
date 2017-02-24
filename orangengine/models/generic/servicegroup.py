@@ -21,3 +21,9 @@ class ServiceGroup(object):
             return [s.value for s in self.elements]
         else:
             raise AttributeError
+
+    def table_value(self, with_names):
+        value = "Group: " + self.name + "\n"
+        for s in self.elements:
+            value = value + "   " + s.table_value(with_names) + "\n"
+        return value

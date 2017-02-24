@@ -6,7 +6,7 @@ from collections import defaultdict
 from orangengine.errors import ShadowedPolicyError
 from orangengine.errors import DuplicatePolicyError
 from orangengine.models.generic import CandidatePolicy
-from orangengine.utils import is_ipv4
+from orangengine.utils import is_ipv4, missing_cidr
 
 from netaddr import IPNetwork
 
@@ -17,7 +17,7 @@ NETMIKO_DRIVER_MAPPINGS = {
     'palo_alto_panorama': 'paloalto_panos',
 }
 
-ALLOWED_POLICY_KEYS = [
+ALLOWED_POLICY_KEYS = (
     'source_zones',
     'destination_zones',
     'source_addresses',
@@ -25,18 +25,21 @@ ALLOWED_POLICY_KEYS = [
     'services',
     'action',
     'logging',
-]
+)
 
 
 class BaseDriver(object):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, refresh=False, *args, **kwargs):
 
         self._connected = False
         self.device = None
 
-        # share some output between methods
-        self.config_output = dict()
+        # connection params
+        self._username = kwargs.pop('username')
+        self._password = kwargs.pop('password')
+        self._host = kwargs.pop('host')
+        self._additional_params = kwargs
 
         # address lookup dictionaries
         self.address_name_lookup = dict()
@@ -53,19 +56,62 @@ class BaseDriver(object):
         # policies
         self.policies = list()
         self.policy_tuple_lookup = list()
+        self.policy_name_lookup = dict()
 
         # zones mappings
         self.zone_map = dict()
 
+        # share some output between methods
+        self.config_output = dict()
+
         # retrieve, parse, and store objects
         # order matters here as objects have to already
         # exist in the lookup dictionaries
-        self.open_connection(**kwargs)
-        self.get_addresses()
-        self.get_address_groups()
-        self.get_services()
-        self.get_service_groups()
-        self.get_policies()
+        if refresh:
+            self.refresh()
+
+    def refresh(self):
+        """Refresh the device
+
+        This method will connect to the device and pull down the config and
+        parse all of the objects into the models
+
+        """
+
+        if not self._connected:
+            self.open_connection(self._username, self._password, self._host, self._additional_params)
+
+        # first we need to clear all of the current objects
+
+        # address lookup dictionaries
+        self.address_name_lookup = dict()
+        self.address_value_lookup = defaultdict(list)
+        self.address_group_name_lookup = dict()
+        self.address_group_value_lookup = defaultdict(list)
+
+        # service lookup dictionaries
+        self.service_name_lookup = dict()
+        self.service_value_lookup = defaultdict(list)
+        self.service_group_name_lookup = dict()
+        self.service_group_value_lookup = defaultdict(list)
+
+        # policies
+        self.policies = list()
+        self.policy_tuple_lookup = list()
+        self.policy_name_lookup = dict()
+
+        # zones mappings
+        self.zone_map = dict()
+
+        # now we parse the new config
+
+        self._get_config()
+
+        self._parse_addresses()
+        self._parse_address_groups()
+        self._parse_services()
+        self._parse_service_groups()
+        self._parse_policies()
 
     def _address_lookup_by_name(self, name):
         return self.address_name_lookup[name]
@@ -124,9 +170,10 @@ class BaseDriver(object):
     def _add_policy(self, policy):
         self.policies.append(policy)
         # self.policy_tuple_lookup.append((policy.value, policy))
+        self.policy_name_lookup[policy.name] = policy
 
     @staticmethod
-    def __policy_key_check(keys):
+    def _policy_key_check(keys):
         if not all(k in ALLOWED_POLICY_KEYS for k in keys):
             raise ValueError('Invalid key in match criteria.')
 
@@ -134,7 +181,14 @@ class BaseDriver(object):
         """
         match policy tuples exactly by match criteria (also a tuple) and return those policies
         """
-        self.__policy_key_check(match_criteria.keys())
+        self._policy_key_check(match_criteria.keys())
+
+        # silently append /32 to any ipv4 address that is missing cidr
+        if 'source_addresses' in match_criteria:
+            match_criteria['source_addresses'] = [missing_cidr(a) for a in match_criteria['source_addresses']]
+
+        if 'destination_addresses' in match_criteria:
+            match_criteria['destination_addresses'] = [missing_cidr(a) for a in match_criteria['destination_addresses']]
 
         policies = [p for p in self.policies if p.match(match_criteria, exact=exact,
                                                         match_containing_networks=match_containing_networks)]
@@ -146,7 +200,7 @@ class BaseDriver(object):
         determine the best policy to append an element from the match criteria to
         return those policies that match and the unique "target" element, or None if no match is found
         """
-        self.__policy_key_check(match_criteria.keys())
+        self._policy_key_check(match_criteria.keys())
 
         set_list = []
         target_element = {}
@@ -196,27 +250,31 @@ class BaseDriver(object):
                                    method=CandidatePolicy.APPEND_POLICY)
 
     @abc.abstractmethod
-    def open_connection(self, *args, **kwargs):
+    def open_connection(self, username, password, host, additional_params):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def get_addresses(self):
+    def _get_config(self):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def get_address_groups(self):
+    def _parse_addresses(self):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def get_services(self):
+    def _parse_address_groups(self):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def get_service_groups(self):
+    def _parse_services(self):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def get_policies(self):
+    def _parse_service_groups(self):
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def _parse_policies(self):
         raise NotImplementedError()
 
     @abc.abstractmethod

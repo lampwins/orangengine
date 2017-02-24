@@ -3,6 +3,8 @@ try:
 except ImportError:
     from distutils.core import setup
 
+requirements = ['pandevice', 'lxml', 'netaddr', 'junos-eznc', 'terminaltables']
+
 config = {
     'description': 'Firewall Policy Automation Engine',
     'author': 'John Anderson',
@@ -13,7 +15,7 @@ config = {
     'packages': ['orangengine'],
     'scripts': [],
     'name': 'orangengine',
-    'requires': ['pandevice', 'junos-eznc', 'lxml', 'netaddr'],
+    'install_requires': requirements
 }
 
 setup(**config)

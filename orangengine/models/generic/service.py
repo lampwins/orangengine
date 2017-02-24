@@ -72,3 +72,9 @@ class Service(object):
                 return self.protocol, self.port
         else:
             raise AttributeError
+
+    def table_value(self, with_names):
+        if with_names:
+            return self.name + " - " + self.value[0] + "/" + self.value[1]
+        else:
+            return self.value[0] + "/" + self.value[1]

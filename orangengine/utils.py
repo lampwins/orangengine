@@ -22,3 +22,15 @@ def is_ipv4(value):
     except Exception:
         return False
     return True
+
+
+def missing_cidr(address):
+    """Missing CIDR
+
+    :returns if the address passes in is ipv4 and missing cidr,
+        return the address with '/32' appended. Else return the
+        value passed in.
+    """
+    if is_ipv4(address) and '/' not in address:
+        return address + '/32'
+    return address

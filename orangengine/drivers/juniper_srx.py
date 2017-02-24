@@ -155,16 +155,20 @@ class JuniperSRXDriver(BaseDriver):
             cu.commit()
         # print letree.tostring(configuration, pretty_print=True)
 
-    def open_connection(self, *args, **kwargs):
+    def open_connection(self, username, password, host, additional_params):
         """
         open the device connection
         """
 
         # TODO handle connection exceptions correctly
-        self.device = Device(host=kwargs['ip'], user=kwargs['username'], passwd=kwargs['password'])
+        self.device = Device(host=host, user=username, passwd=password)
         self.device.open()
         self._connected = True
 
+    def _get_config(self):
+        """
+        get the config from the device and store it
+        """
         # TODO: fix this xml library conversion nonsense
         # get config sections
 
@@ -174,17 +178,20 @@ class JuniperSRXDriver(BaseDriver):
 
         # TODO: needs xml refactoring
         self.config_output['address_book'] = ET.fromstring(letree.tostring(self.device.rpc.get_config(
-            filter_xml=letree.XML('<configuration><security><address-book><global /></address-book></security></configuration>'))))[0][0]
+            filter_xml=letree.XML(
+                '<configuration><security><address-book><global /></address-book></security></configuration>'))))[0][0]
 
         # TODO: needs xml refactoring
         self.config_output['output_junos_default'] = ET.fromstring(letree.tostring(self.device.rpc.get_config(
-            filter_xml=letree.XML('<configuration><groups><name>junos-defaults</name><applications></applications></groups></configuration>'))))[0].find('applications')
+            filter_xml=letree.XML(
+                '<configuration><groups><name>junos-defaults</name><applications></applications></groups></configuration>'))))[
+            0].find('applications')
 
         # TODO: needs xml refactoring
         self.config_output['output_applications'] = ET.fromstring(letree.tostring(self.device.rpc.get_config(
             filter_xml=letree.XML('<configuration><applications></applications></configuration>'))))[0]
 
-    def get_addresses(self):
+    def _parse_addresses(self):
         """
         retrieve and parse the address objects
         """
@@ -215,7 +222,7 @@ class JuniperSRXDriver(BaseDriver):
         self.address_name_lookup['any'] = any_address
         self.address_value_lookup['any'].append(any_address)
 
-    def get_address_groups(self):
+    def _parse_address_groups(self):
         """
         retrieve and parse the address-set objects
         """
@@ -240,7 +247,7 @@ class JuniperSRXDriver(BaseDriver):
             # set he address group name lookup
             self.address_group_name_lookup[name] = address_set
 
-    def get_services(self):
+    def _parse_services(self):
         """
         retrieve and parse services. Both junos-default and user defined applications.
 
@@ -284,7 +291,7 @@ class JuniperSRXDriver(BaseDriver):
 
                 self.service_name_lookup[s_name] = service
 
-    def get_service_groups(self):
+    def _parse_service_groups(self):
         """
         retrieve and parse service groups (includes junos-defaults and user defined applications)
         """
@@ -308,7 +315,7 @@ class JuniperSRXDriver(BaseDriver):
                 # service group name lookup
                 self.service_group_name_lookup[name] = service_group
 
-    def get_policies(self):
+    def _parse_policies(self):
         """
         retrieve and parse polices
         """

@@ -5,6 +5,7 @@ from orangengine.utils import is_ipv4
 from collections import Iterable
 import re
 from netaddr import IPRange, IPNetwork
+from terminaltables import AsciiTable
 
 
 class Policy(object):
@@ -115,12 +116,36 @@ class Policy(object):
             if match_containing_networks and key in ['source_addresses', 'destination_addresses']:
                 if not self.__in_network(value, p_value, exact_match=True):
                     return False
+            elif p_value == 'any' and key in ['source_addresses', 'destination_addresses']:
+                # 'any' as address constitutes a match, so move on
+                continue
             elif exact and not set(p_value) == set(value):
                 return False
             elif not exact and not set(value).issubset(set(p_value)):
                 return False
 
         return True
+
+    def to_table(self, with_names=False):
+        """Return the policy as an ascii tables
+
+        Args:
+            with_names (bool): Include object names
+        """
+        table_header = ["Src Zones", "Src Addresses", "Dst Zones", "Dst Addresses", "Services", "Action"]
+
+        s_zones = "\n".join([z for z in self.src_zones])
+        d_zones = "\n".join([z for z in self.dst_zones])
+        s_addresses = "\n".join([a.table_value(with_names) for a in self.src_addresses])
+        d_addresses = "\n".join([a.table_value(with_names) for a in self.dst_addresses])
+        services = "\n".join([s.table_value(with_names) for s in self._services])
+
+        table_row = [s_zones, s_addresses, d_zones, d_addresses, services, self.action]
+
+        table = AsciiTable([table_header, table_row])
+        table.title = "Policy: " + self.name
+
+        return table.table
 
 
 CANDIDATE_POLICY_METHOD = {
