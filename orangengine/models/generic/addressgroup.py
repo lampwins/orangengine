@@ -25,4 +25,4 @@ class AddressGroup(object):
         value = "Group: " + self.name + "\n"
         for a in self.elements:
             value = value + "   " + a.table_value(with_names) + "\n"
-        return value
+        return value.rstrip('\n')  # remove the last new line
