@@ -2,7 +2,7 @@
 from orangengine.errors import BadCandidatePolicyError
 from orangengine.utils import is_ipv4
 
-from collections import Iterable
+from collections import Iterable, defaultdict
 import re
 from netaddr import IPRange, IPNetwork
 from terminaltables import AsciiTable
@@ -211,3 +211,47 @@ class CandidatePolicy(object):
                 raise BadCandidatePolicyError('Name contains invalid character(s)')
             else:
                 self.policy.name = name
+
+
+class EffectivePolicy(object):
+    """
+    effective policy of an address target. Stores source and destination rules
+    and provides a table method
+    """
+
+    def __init__(self, address, source_policies, destination_policies):
+
+        self.source_policy_lookup = dict()
+        for rule in source_policies:
+            self.source_policy_lookup[rule.name] = rule
+
+        self.destination_policy_lookup = dict()
+        for rule in destination_policies:
+            self.destination_policy_lookup[rule.name] = rule
+
+        self.address = address
+
+        src_service_lookup = defaultdict(list)
+        dest_service_lookup = defaultdict(list)
+        src_address_lookup = defaultdict(list)
+        dest_address_lookup = defaultdict(list)
+
+        for name, policy in self.source_policy_lookup.iteritems():
+            for s in policy.services:
+                src_service_lookup[s].append(policy)
+            for a in policy.destination_addresses:
+                src_address_lookup[a].append(policy)
+
+        for name, policy in self.destination_policy_lookup.iteritems():
+            for s in policy.services:
+                dest_service_lookup[s].append(policy)
+            for a in policy.source_addresses:
+                dest_address_lookup[a].append(policy)
+
+
+
+    def source_table(self, service_focus=True):
+
+        table_header = ["Dst Zones", "Dst Addresses", "Services", "Action"]
+
+        if

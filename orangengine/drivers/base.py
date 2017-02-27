@@ -249,6 +249,18 @@ class BaseDriver(object):
             return CandidatePolicy(target_dict=reduced_target_elements, matched_policies=list(matches),
                                    method=CandidatePolicy.APPEND_POLICY)
 
+    def effective_policy(self, address, match_containing_networks=True):
+        """
+        Match source and destination rules based on address and return an EffectivePolicy object
+        :param address:
+        :return: EffectivePolicy object
+        """
+
+        source_rules = self.policy_match({'source_addresses': [address]}, match_containing_networks)
+        destination_addresses = self.policy_match({'destination_addresses': [address]}, match_containing_networks)
+
+        return
+
     @abc.abstractmethod
     def open_connection(self, username, password, host, additional_params):
         raise NotImplementedError()
