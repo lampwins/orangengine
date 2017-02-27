@@ -23,4 +23,4 @@ t = {
 
 c_policy = device.policy_match(t, match_containing_networks=False)
 for p in c_policy:
-    print p.name
+    print p.table()

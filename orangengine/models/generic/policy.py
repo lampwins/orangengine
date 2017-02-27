@@ -2,10 +2,11 @@
 from orangengine.errors import BadCandidatePolicyError
 from orangengine.utils import is_ipv4
 
-from collections import Iterable
+from collections import Iterable, defaultdict
 import re
 from netaddr import IPRange, IPNetwork
 from terminaltables import AsciiTable
+from functools import partial
 
 
 class Policy(object):
@@ -61,6 +62,8 @@ class Policy(object):
             return d_addrs
         elif item == 'services':
             return services
+        elif item == 'services_objects':
+            return self._services
 
         else:
             raise AttributeError()
@@ -126,6 +129,18 @@ class Policy(object):
 
         return True
 
+    @staticmethod
+    def table_address_cell(addresses, with_names=False):
+        return "\n".join([a.table_value(with_names) for a in addresses]) + '\n'
+
+    @staticmethod
+    def table_service_cell(services, with_names=False):
+        return "\n".join([s.table_value(with_names) for s in services]) + '\n'
+
+    @staticmethod
+    def table_zone_cell(zones):
+        return "\n".join([z for z in zones]) + '\n'
+
     def to_table(self, with_names=False):
         """Return the policy as an ascii tables
 
@@ -134,11 +149,11 @@ class Policy(object):
         """
         table_header = ["Src Zones", "Src Addresses", "Dst Zones", "Dst Addresses", "Services", "Action"]
 
-        s_zones = "\n".join([z for z in self.src_zones])
-        d_zones = "\n".join([z for z in self.dst_zones])
-        s_addresses = "\n".join([a.table_value(with_names) for a in self.src_addresses])
-        d_addresses = "\n".join([a.table_value(with_names) for a in self.dst_addresses])
-        services = "\n".join([s.table_value(with_names) for s in self._services])
+        s_zones = self.table_zone_cell(self.src_zones)
+        d_zones = self.table_zone_cell(self.dst_zones)
+        s_addresses = self.table_address_cell(self.src_addresses, with_names)
+        d_addresses = self.table_address_cell(self.dst_addresses, with_names)
+        services = self.table_service_cell(self._services, with_names)
 
         table_row = [s_zones, s_addresses, d_zones, d_addresses, services, self.action]
 
@@ -211,3 +226,94 @@ class CandidatePolicy(object):
                 raise BadCandidatePolicyError('Name contains invalid character(s)')
             else:
                 self.policy.name = name
+
+
+class EffectivePolicy(object):
+    """
+    effective policy of an address target. Stores source and destination rules
+    and provides table methods
+    """
+
+    class _TargetLookupObject(object):
+
+        def __init__(self, policies, source):
+            self.policy_lookup = dict()
+            self.actions = set()
+
+            for p in policies:
+                self.policy_lookup[p.name] = p
+                self.actions.add(p.action)
+
+            self.actions_lookup = defaultdict(partial(defaultdict, partial(defaultdict, list)))
+
+            for a in self.actions:
+                for name, policy in self.policy_lookup.iteritems():
+                    for s in policy.services_objects:
+                        self.actions_lookup[a]['service_lookup'][s].append(policy)
+                    if source:
+                        addresses = policy.dst_addresses
+                    else:
+                        addresses = policy.src_addresses
+                    for addr in addresses:
+                        self.actions_lookup[a]['address_lookup'][addr].append(policy)
+
+    def __init__(self, address, source_policies, destination_policies):
+
+        self.source_lookup_object = self._TargetLookupObject(source_policies, source=True)
+        self.destination_lookup_object = self._TargetLookupObject(destination_policies, source=False)
+        self.target = address
+
+    def source_table(self, service_focus=True):
+
+        table_header = ["Dst Zones", "Dst Addresses", "Services", "Action"]
+        table_data = [table_header] + self._table_rows(self.source_lookup_object, True, service_focus)
+        table = AsciiTable(table_data)
+        table.title = "Effective Policy: " + self.target + " as source"
+
+        return table.table
+
+    def destination_table(self, service_focus=True):
+
+        table_header = ["Src Zones", "Src Addresses", "Services", "Action"]
+        table_data = [table_header] + self._table_rows(self.destination_lookup_object, False, service_focus)
+        table = AsciiTable(table_data)
+        table.title = "Effective Policy: " + self.target + " as destination"
+
+        return table.table
+
+    def to_table(self, service_focus=True):
+
+        return self.source_table(service_focus) + '\n\n' + self.destination_table(service_focus)
+
+    @staticmethod
+    def _table_rows(lookup_table, source, service_focus=True):
+
+        if service_focus:
+            focus_key = 'service_lookup'
+        else:
+            focus_key = 'address_lookup'
+
+        table_rows = []
+        for action in lookup_table.actions_lookup.keys():
+            for focus_target in lookup_table.actions_lookup[action][focus_key]:
+                for policy in lookup_table.actions_lookup[action][focus_key][focus_target]:
+
+                    if source:
+                        _p_zones = policy.dst_zones
+                        _p_addresses = policy.dst_addresses
+                    else:
+                        _p_zones = policy.src_zones
+                        _p_addresses = policy.src_addresses
+
+                    zones = Policy.table_zone_cell(_p_zones)
+
+                    if service_focus:
+                        addresses = Policy.table_address_cell(_p_addresses)
+                        services = focus_target.table_value(with_names=False)
+                    else:
+                        addresses = focus_target.table_value(with_names=False)
+                        services = Policy.table_service_cell(policy.services_objects)
+
+                    table_rows.append([zones, addresses, services, policy.action])
+
+        return table_rows

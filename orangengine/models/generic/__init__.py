@@ -8,8 +8,9 @@ from orangengine.models.generic.address import ADDRESS_TYPES
 from orangengine.models.generic.service import ServiceTerm
 from orangengine.models.generic.service import PortRange
 from orangengine.models.generic.policy import CandidatePolicy
+from orangengine.models.generic.policy import EffectivePolicy
 
 
 __all__ = ['AddressGroup', 'Address', 'Policy', 'Service',
            'ServiceGroup', 'ServiceTerm', 'PortRange',
-           'ADDRESS_TYPES', 'CandidatePolicy', ]
+           'ADDRESS_TYPES', 'CandidatePolicy', 'EffectivePolicy', ]

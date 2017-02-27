@@ -26,4 +26,4 @@ class ServiceGroup(object):
         value = "Group: " + self.name + "\n"
         for s in self.elements:
             value = value + "   " + s.table_value(with_names) + "\n"
-        return value
+        return value.rstrip('\n')  # remove the last new line
