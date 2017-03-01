@@ -196,14 +196,14 @@ class BaseDriver(object):
 
         return policies
 
-    def policy_candidate_match(self, match_criteria):
+    def candidate_policy_match(self, match_criteria):
         """
         determine the best policy to append an element from the match criteria to
         return those policies that match and the unique "target" element, or None if no match is found
         """
         self._policy_key_check(match_criteria.keys())
 
-        set_list = []
+        set_dict = {}
         target_element = {}
 
         # shadow policy check (shadow implicitly includes duplicates)
@@ -212,42 +212,23 @@ class BaseDriver(object):
             # this is a shadowed policy
             raise ShadowedPolicyError
 
-        # we now know there is something unique about this policy
-        # for each of the named parameters, find policy matches for those parameters
-        for key, value in match_criteria.iteritems():
-            # ignore those parameters which were not passed in, i.e. defaulted to None
-            if value is None:
-                continue
+        # now we find all candidate policies
+        candidate_match = tuple([(p, p.candidate_match(match_criteria, match_containing_networks=True, exact=True))
+                                  for p in self.policies])
+        # filter out tuples that are false (not a candidate match)
+        candidate_tuples = list(filter((lambda x: x[1]), candidate_match))
 
-            # if a match(s) is found, this element is unique
-            me_set = set(self.policy_match({_key: match_criteria[_key] for _key in match_criteria.keys()
-                                            if _key is not key}))
-            if len(me_set) != 0:
-                # this is a unique element, thus our target element to append to policy x
-                target_element[key] = match_criteria[key]
-                # add the match set to the match set list
-                set_list.append(me_set)
+        target_element_key = candidate_tuples[0][1]
 
-        if len(set_list) == 0 or len(target_element) > 1:
+        if len(candidate_tuples) == 0 and all(target_element_key == ct[1] for ct in candidate_tuples):
             # no valid matches or more than one target element identified (meaning this will have to be a new policy)
             return CandidatePolicy(target_dict=match_criteria, method=CandidatePolicy.NEW_POLICY)
         else:
-            # found valid matches
-            # the intersection of all match sets is the set of all policies that the target element can to appended to
-            matches = set.intersection(*set_list)
 
-            if len(matches) < 1:
-                # there actually were no matches after the intersection (rare)
-                # threat this as a new policy
-                return CandidatePolicy(target_dict=match_criteria, method=CandidatePolicy.NEW_POLICY)
+            matches = [ct[0] for ct in candidate_tuples]
 
-            # now lets pair down to just the unique elements in question
-            reduced_target_elements = {}
-            for key, value in target_element.iteritems():
-                p_element = getattr(list(matches)[0], key, [])
-                reduced_target_elements[key] = list(set(value) - set(p_element))
-
-            return CandidatePolicy(target_dict=reduced_target_elements, matched_policies=list(matches),
+            return CandidatePolicy(target_dict={target_element_key: match_criteria[target_element_key]},
+                                   matched_policies=matches,
                                    method=CandidatePolicy.APPEND_POLICY)
 
     def effective_policy(self, address, match_containing_networks=True):
