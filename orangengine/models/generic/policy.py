@@ -95,7 +95,10 @@ class Policy(object):
         p_fqdns = [a for a in p_value if not is_ipv4(a)]
 
         # network containment implies exact match... i think?
-        addr_result = any(a == b or a in b for a in addresses for b in p_addresses)
+        for a in addresses:
+            addr_result = any(a == b or a in b for b in p_addresses)
+            if not addr_result:
+                return False
 
         # now match the fqdns
         if exact_match:
@@ -103,7 +106,7 @@ class Policy(object):
         else:
             fqdn_result = set(p_fqdns).issubset(set(fqdns))
 
-        return addr_result and fqdn_result
+        return fqdn_result
 
     def match(self, match_criteria, exact=False, match_containing_networks=True):
         """
@@ -116,18 +119,41 @@ class Policy(object):
 
             p_value = getattr(self, key, [])
 
-            if match_containing_networks and key in ['source_addresses', 'destination_addresses']:
-                if not self.__in_network(value, p_value, exact_match=True):
-                    return False
-            elif p_value == 'any' and key in ['source_addresses', 'destination_addresses']:
+            if p_value == 'any' and key in ['source_addresses', 'destination_addresses', 'services']:
                 # 'any' as address constitutes a match, so move on
                 continue
+            elif len(value) > len(p_value):
+                # more values in the match than the policy, fail
+                return False
+            elif match_containing_networks and key in ['source_addresses', 'destination_addresses']:
+                if not self.__in_network(value, p_value, exact_match=True):
+                    return False
             elif exact and not set(p_value) == set(value):
                 return False
             elif not exact and not set(value).issubset(set(p_value)):
                 return False
 
         return True
+
+    def candidate_match(self, match_criteria, exact=False, match_containing_networks=True):
+        """
+        wrap the match method in some extra logic to determine if this is a candidate for policy addition
+        """
+        unique_key = None
+        for key, value in match_criteria.iteritems():
+            match = self.match({key: value}, exact, match_containing_networks)
+            if not match:
+                if unique_key:
+                    # the unique key is already set so we fail
+                    return False
+                else:
+                    # found a unique key
+                    unique_key = key
+
+        # if we survived, this is a candidate policy so return which key is unique
+        return unique_key
+
+
 
     @staticmethod
     def table_address_cell(addresses, with_names=False):
@@ -192,7 +218,7 @@ class CandidatePolicy(object):
             # this will be an addendum to an existing policy and there was only one match
             self.set_base_policy(matched_policies[0])
         else:
-            self.set_base_policy()
+            self.set_base_policy(matched_policies)
 
     def set_base_policy(self, matched_policy=None):
 
