@@ -24,8 +24,8 @@ class ServiceTerm(object):
         """init service term object"""
 
         self.name = name
-        self.protocol = protocol
-        self.port = port
+        self.protocol = protocol if protocol else "unknown"
+        self.port = port if port else "unknown"
 
     def __getattr__(self, item):
 
@@ -44,7 +44,7 @@ class Service(object):
         """init a service"""
 
         self.name = name
-        self.protocol = protocol
+        self.protocol = protocol if protocol else "unknown"
         if port is not None and '-' in port:
             start = port.split('-')[0]
             stop = port.split('-')[1]
@@ -53,7 +53,7 @@ class Service(object):
             else:
                 self.port = start
         else:
-            self.port = port
+            self.port = port if port else "unknown"
         self.terms = list()
 
     def add_term(self, term):
@@ -77,4 +77,6 @@ class Service(object):
         if with_names:
             return self.name + " - " + self.value[0] + "/" + self.value[1]
         else:
+            if isinstance(self.value, list):
+                return "\n".join([s[0] + "/" + s[1] for s in self.value])
             return self.value[0] + "/" + self.value[1]

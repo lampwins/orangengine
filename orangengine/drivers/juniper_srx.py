@@ -271,7 +271,14 @@ class JuniperSRXDriver(BaseDriver):
                     for e_term in e_application.findall('term'):
                         t_name = e_term.find('name').text
                         protocol = e_term.find('protocol').text
-                        if e_term.find('destination-port') is not None:
+                        if protocol == 'icmp':
+                            icmp_type = icmp_code = 'unknown'
+                            if e_term.find('icmp-type') is not None:
+                                icmp_type = e_term.find('icmp-type').text
+                            if e_term.find('icmp-code') is not None:
+                                icmp_code = e_term.find('icmp-code').text
+                            port = ",".join([icmp_type, icmp_code])
+                        elif e_term.find('destination-port') is not None:
                             port = e_term.find('destination-port').text
                         term = ServiceTerm(t_name, protocol, port)
                         service.add_term(term)
@@ -284,6 +291,13 @@ class JuniperSRXDriver(BaseDriver):
                 else:
                     # regular application
                     protocol = e_application.find('protocol').text
+                    if protocol == 'icmp':
+                        icmp_type = icmp_code = 'unknown'
+                        if e_term.find('icmp-type') is not None:
+                            icmp_type = e_term.find('icmp-type').text
+                        if e_term.find('icmp-code') is not None:
+                            icmp_code = e_term.find('icmp-code').text
+                        port = ",".join([icmp_type, icmp_code])
                     if e_application.find('destination-port') is not None:
                         port = e_application.find('destination-port').text
                     service = Service(s_name, protocol, port)
