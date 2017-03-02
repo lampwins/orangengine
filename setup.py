@@ -4,6 +4,12 @@ except ImportError:
     from distutils.core import setup
 
 requirements = ['pandevice', 'lxml', 'netaddr', 'junos-eznc', 'terminaltables']
+packages = ['orangengine',
+            'orangengine/drivers',
+            'orangengine/errors',
+            'orangengine/models',
+            'orangengine/models/generic',
+            'orangengine/models/paloalto']
 
 config = {
     'description': 'Firewall Policy Automation Engine',
@@ -15,7 +21,8 @@ config = {
     'packages': ['orangengine'],
     'scripts': [],
     'name': 'orangengine',
-    'install_requires': requirements
+    'install_requires': requirements,
+    'packages': packages
 }
 
 setup(**config)
