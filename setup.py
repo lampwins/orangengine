@@ -18,7 +18,6 @@ config = {
     'download_url': 'https://github.com/lampwins/orangengine',
     'author_email': 'lampwins@gmail.com.',
     'version': '0.0.1',
-    'packages': ['orangengine'],
     'scripts': [],
     'name': 'orangengine',
     'install_requires': requirements,
