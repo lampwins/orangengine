@@ -9,7 +9,8 @@ packages = ['orangengine',
             'orangengine/errors',
             'orangengine/models',
             'orangengine/models/generic',
-            'orangengine/models/paloalto']
+            'orangengine/models/paloalto',
+            'orangengine/mappers']
 
 config = {
     'description': 'Firewall Policy Automation Engine',
