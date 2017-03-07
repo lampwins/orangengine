@@ -37,9 +37,9 @@ class BaseDriver(object):
         self.device = None
 
         # connection params
-        self._username = kwargs.pop('username')
-        self._password = kwargs.pop('password')
-        self._host = kwargs.pop('host')
+        self._username = kwargs.get('username')
+        self._password = kwargs.get('password')
+        self._host = kwargs.get('host')
         self._additional_params = kwargs
 
         # address lookup dictionaries
@@ -214,7 +214,7 @@ class BaseDriver(object):
 
         # now we find all candidate policies
         candidate_match = tuple([(p, p.candidate_match(match_criteria, match_containing_networks=True, exact=True))
-                                  for p in self.policies])
+                                for p in self.policies])
         # filter out tuples that are false (not a candidate match)
         candidate_tuples = list(filter((lambda x: x[1]), candidate_match))
 
@@ -275,4 +275,8 @@ class BaseDriver(object):
 
     @abc.abstractmethod
     def apply_candidate_policy(self, candidate_policy):
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def apply_policy(self, policy):
         raise NotImplementedError()

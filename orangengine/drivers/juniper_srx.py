@@ -24,6 +24,9 @@ from jnpr.junos.utils.config import Config
 # TODO refactor comments
 class JuniperSRXDriver(BaseDriver):
 
+    def apply_policy(self, policy):
+        pass
+
     def apply_candidate_policy(self, candidate_policy, merge=True):
         """
         resolve the candidate policy and apply it to the device
