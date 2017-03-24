@@ -1,5 +1,5 @@
 
-class AddressGroup(object):
+class BaseAddressGroup(object):
 
     def __init__(self, name):
         """init a address group object"""

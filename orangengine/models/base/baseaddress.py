@@ -1,12 +1,10 @@
 
-"""address object constants"""
-ADDRESS_TYPES = {
-    'ipv4': 1,
-    'dns': 2,
-}
+from orangengine.utils import enum
 
 
-class Address(object):
+class BaseAddress(object):
+
+    AddressTypes = enum('IPv4', 'DNS')
 
     def __init__(self, name, value, a_type):
         """init address object"""

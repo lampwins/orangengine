@@ -3,8 +3,10 @@ utility functions
 """
 
 from netaddr import IPNetwork, IPAddress, IPRange
+from lxml import etree as letree
 
-__all__ = ['is_ipv4']
+__all__ = ['is_ipv4', 'missing_cidr', 'enum', 'create_element',
+           'bidict', ]
 
 
 def is_ipv4(value):
@@ -34,3 +36,45 @@ def missing_cidr(address):
     if is_ipv4(address) and '/' not in address:
         return address + '/32'
     return address
+
+
+# Enumerator type
+def enum(*sequential, **named):
+    enums = dict(zip(sequential, range(len(sequential))), **named)
+    reverse = dict((value, key) for key, value in enums.iteritems())
+    enums['reverse_mapping'] = reverse
+    return type('Enum', (), enums)
+
+
+def create_element(tag, text=None, parent=None):
+    # create an ambiguous element
+    if parent is not None:
+        e = letree.SubElement(parent, tag)
+    else:
+        e = letree.Element(tag)
+    if text:
+        e.text = text
+    return e
+
+
+class bidict(dict):
+    """Bidirectional dictionary for two-way lookups
+
+    Thanks to @Basj
+    http://stackoverflow.com/questions/3318625/efficient-bidirectional-hash-table-in-python
+    """
+    def __init__(self, *args, **kwargs):
+        super(bidict, self).__init__(*args, **kwargs)
+        self.inverse = {}
+        for key, value in self.iteritems():
+            self.inverse.setdefault(value,[]).append(key)
+
+    def __setitem__(self, key, value):
+        super(bidict, self).__setitem__(key, value)
+        self.inverse.setdefault(value,[]).append(key)
+
+    def __delitem__(self, key):
+        self.inverse.setdefault(self[key],[]).remove(key)
+        if self[key] in self.inverse and not self.inverse[self[key]]:
+            del self.inverse[self[key]]
+        super(bidict, self).__delitem__(key)

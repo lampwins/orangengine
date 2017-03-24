@@ -1,6 +1,6 @@
 
 from orangengine.errors import BadCandidatePolicyError
-from orangengine.utils import is_ipv4
+from orangengine.utils import is_ipv4, enum
 
 from collections import Iterable, defaultdict
 import re
@@ -9,7 +9,10 @@ from terminaltables import AsciiTable
 from functools import partial
 
 
-class Policy(object):
+class BasePolicy(object):
+
+    Action = enum('ALLOW', 'DENY', 'REJECT')
+    Logging = enum('START', 'END')
 
     def __init__(self, name, action, description, logging):
         """init policy"""
@@ -44,9 +47,9 @@ class Policy(object):
         return a tuple representation of the policy with normalized values
         """
 
-        s_addrs = set(Policy.__flatten([a.value for a in self.src_addresses]))
-        d_addrs = set(Policy.__flatten([a.value for a in self.dst_addresses]))
-        services = set(Policy.__flatten([s.value for s in self._services]))
+        s_addrs = set(BasePolicy.__flatten([a.value for a in self.src_addresses]))
+        d_addrs = set(BasePolicy.__flatten([a.value for a in self.dst_addresses]))
+        services = set(BasePolicy.__flatten([s.value for s in self._services]))
 
         if item == 'value':
             return self.src_zones, self.dst_zones, list(s_addrs), list(d_addrs), list(services), self.action
@@ -72,7 +75,7 @@ class Policy(object):
     def __flatten(l):
         for el in l:
             if isinstance(el, Iterable) and not isinstance(el, basestring) and not isinstance(el, tuple):
-                for sub in Policy.__flatten(el):
+                for sub in BasePolicy.__flatten(el):
                     yield sub
             else:
                 yield el
@@ -225,11 +228,11 @@ class CandidatePolicy(object):
         if self.method is self.NEW_POLICY or self.matched_policies is None:
             # this will be a new policy
             # TODO figure out logging default?
-            self.policy = Policy(name=None,
-                                 action=self.target_dict.get('action'),
-                                 description=self.target_dict.get('description'),
-                                 logging=self.target_dict.get('logging', "session-close")
-                                 )
+            self.policy = BasePolicy(name=None,
+                                     action=self.target_dict.get('action'),
+                                     description=self.target_dict.get('description'),
+                                     logging=self.target_dict.get('logging', BasePolicy.LOGGING_BOTH)
+                                     )
             self.policy.src_zones = self.target_dict.get('source_zones')
             self.policy.dst_zones = self.target_dict.get('destination_zones')
             self.policy.src_addresses = self.target_dict.get('source_addresses')
@@ -238,7 +241,7 @@ class CandidatePolicy(object):
 
             self.method = self.NEW_POLICY
 
-        elif isinstance(matched_policy, Policy):
+        elif isinstance(matched_policy, BasePolicy):
             self.policy = matched_policy
         else:
             self.policy = matched_policy[0]
@@ -331,14 +334,14 @@ class EffectivePolicy(object):
                         _p_zones = policy.src_zones
                         _p_addresses = policy.src_addresses
 
-                    zones = Policy.table_zone_cell(_p_zones)
+                    zones = BasePolicy.table_zone_cell(_p_zones)
 
                     if service_focus:
-                        addresses = Policy.table_address_cell(_p_addresses)
+                        addresses = BasePolicy.table_address_cell(_p_addresses)
                         services = focus_target.table_value(with_names=False)
                     else:
                         addresses = focus_target.table_value(with_names=False)
-                        services = Policy.table_service_cell(policy.services_objects)
+                        services = BasePolicy.table_service_cell(policy.services_objects)
 
                     table_rows.append([zones, addresses, services, policy.action])
 

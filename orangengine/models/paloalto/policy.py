@@ -1,5 +1,5 @@
 
-from orangengine.models.generic import Policy as GenericPolicy
+from orangengine.models.base import BasePolicy as GenericPolicy
 
 
 class PaloAltoPolicy(GenericPolicy):

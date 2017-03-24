@@ -2,7 +2,7 @@
 from orangengine.drivers.base import BaseDriver
 from orangengine.models.paloalto import PaloAltoPolicy
 from orangengine.models.paloalto import PaloAltoAddress
-from orangengine.models import Address as GenericAddress
+from orangengine.models.base import BaseAddress as GenericAddress
 
 from pandevice import base
 from pandevice import panorama

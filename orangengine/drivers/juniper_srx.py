@@ -3,15 +3,15 @@ import xml.etree.ElementTree as ET
 from lxml import etree as letree
 
 from orangengine.drivers import BaseDriver
-from orangengine.models import Address
-from orangengine.models import AddressGroup
-from orangengine.models import ADDRESS_TYPES
-from orangengine.models import Service
-from orangengine.models import ServiceTerm
-from orangengine.models import PortRange
-from orangengine.models import ServiceGroup
-from orangengine.models import Policy
-from orangengine.models import CandidatePolicy
+from orangengine.models.base import BaseAddress
+from orangengine.models.base import BaseAddressGroup
+from orangengine.models.base import BaseService
+from orangengine.models.base import BaseServiceTerm
+from orangengine.models.base import BasePortRange
+from orangengine.models.base import BaseServiceGroup
+from orangengine.models.base import BasePolicy
+from orangengine.models.base import CandidatePolicy
+from orangengine.models.juniper import JuniperSRXPolicy
 from orangengine.errors import ConnectionError
 from orangengine.errors import BadCandidatePolicyError
 from orangengine.errors import PolicyImplementationError
@@ -209,19 +209,19 @@ class JuniperSRXDriver(BaseDriver):
                     name = e.text
                 elif e.tag == 'ip-prefix':
                     value = e.text
-                    a_type = ADDRESS_TYPES['ipv4']
+                    a_type = BaseAddress.AddressTypes.IPv4
                 elif e.tag == 'dns-name':
                     value = e.find('name').text
-                    a_type = ADDRESS_TYPES['dns']
+                    a_type = BaseAddress.AddressTypes.DNS
                 else:
                     pass
 
-            address = Address(name, value, a_type)
+            address = BaseAddress(name, value, a_type)
             self.address_name_lookup[name] = address
             self.address_value_lookup[value].append(address)
 
         # special case: manually create "any" address
-        any_address = Address("any", "any", 1)
+        any_address = BaseAddress("any", "any", 1)
         self.address_name_lookup['any'] = any_address
         self.address_value_lookup['any'].append(any_address)
 
@@ -235,7 +235,7 @@ class JuniperSRXDriver(BaseDriver):
 
         for e_address_set in address_sets.findall('address-set'):
             name = e_address_set.find('name').text
-            address_set = AddressGroup(name)
+            address_set = BaseAddressGroup(name)
             value_lookup_list = []
             for e in e_address_set.findall('address'):
                 a = e.find('name').text
@@ -262,14 +262,14 @@ class JuniperSRXDriver(BaseDriver):
                 s_name = e_application.find('name').text
                 if s_name == 'any':
                     # special case: manually build the any object
-                    any_service = Service(s_name, 'any', 'any')
+                    any_service = BaseService(s_name, 'any', 'any')
                     self.service_value_lookup[('any', 'any')].append(any_service)
                     self.service_name_lookup[s_name] = any_service
                     continue
                 port = None
                 if e_application.find('term') is not None:
                     # term based application
-                    service = Service(s_name)
+                    service = BaseService(s_name)
                     value_lookup_list = []
                     for e_term in e_application.findall('term'):
                         t_name = e_term.find('name').text
@@ -283,9 +283,9 @@ class JuniperSRXDriver(BaseDriver):
                             port = ",".join([icmp_type, icmp_code])
                         elif e_term.find('destination-port') is not None:
                             port = e_term.find('destination-port').text
-                        term = ServiceTerm(t_name, protocol, port)
+                        term = BaseServiceTerm(t_name, protocol, port)
                         service.add_term(term)
-                        if isinstance(port, PortRange):
+                        if isinstance(port, BasePortRange):
                             # reset the port value to insert into the lookup dictionary
                             port = port.value
                         value_lookup_list.append((protocol, port))
@@ -303,7 +303,7 @@ class JuniperSRXDriver(BaseDriver):
                         port = ",".join([icmp_type, icmp_code])
                     if e_application.find('destination-port') is not None:
                         port = e_application.find('destination-port').text
-                    service = Service(s_name, protocol, port)
+                    service = BaseService(s_name, protocol, port)
                     self.service_value_lookup[(protocol, port)].append(service)
 
                 self.service_name_lookup[s_name] = service
@@ -317,7 +317,7 @@ class JuniperSRXDriver(BaseDriver):
         for application_sets in [self.config_output['output_junos_default'], self.config_output['output_applications']]:
             for e_service_set in application_sets.findall('application-set'):
                 name = e_service_set.find('name').text
-                service_group = ServiceGroup(name)
+                service_group = BaseServiceGroup(name)
                 value_lookup_list = []
                 for e_application in e_service_set.findall('application'):
                     s = e_application.find('name').text
@@ -348,7 +348,8 @@ class JuniperSRXDriver(BaseDriver):
             else:
                 # not a policy type element
                 continue
-            action = logging = None
+            action = None
+            logging = []
             for e_policy in e_zone_set.findall('policy'):
                 name = e_policy.find('name').text
                 description = e_policy.find('description')
@@ -356,13 +357,14 @@ class JuniperSRXDriver(BaseDriver):
                     description = description.text
                 for e_then in list(e_policy.find('then')):
                     if e_then.tag in ['permit', 'deny', 'reject']:
-                        action = e_then.tag
+                        action = JuniperSRXPolicy.ActionMap[e_then.tag]
                     elif e_then.tag == 'log':
-                        logging = e_then[0].tag
+                        for e_log in e_then:
+                            logging.append(JuniperSRXPolicy.LoggingMap[e_log.tag])
                     else:
                         # currently unsupported element
                         pass
-                policy = Policy(name, action, description, logging)
+                policy = JuniperSRXPolicy(name, action, description, logging)
                 policy.add_src_zone(from_zone)
                 policy.add_dst_zone(to_zone)
                 e_match = e_policy.find('match')

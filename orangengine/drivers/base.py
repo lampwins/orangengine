@@ -5,9 +5,9 @@ from collections import defaultdict
 
 from orangengine.errors import ShadowedPolicyError
 from orangengine.errors import DuplicatePolicyError
-from orangengine.models.generic import CandidatePolicy
+from orangengine.models.base import CandidatePolicy
 from orangengine.utils import is_ipv4, missing_cidr
-from orangengine.models.generic import EffectivePolicy
+from orangengine.models.base import EffectivePolicy
 
 from netaddr import IPNetwork
 

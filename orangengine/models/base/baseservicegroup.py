@@ -1,5 +1,5 @@
 
-class ServiceGroup(object):
+class BaseServiceGroup(object):
 
     def __init__(self, name):
         """init a service group"""
