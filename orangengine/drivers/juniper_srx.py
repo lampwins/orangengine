@@ -3,14 +3,12 @@ import xml.etree.ElementTree as ET
 from lxml import etree as letree
 
 from orangengine.drivers import BaseDriver
-from orangengine.models.base import BaseAddress
-from orangengine.models.base import BaseAddressGroup
-from orangengine.models.base import BaseService
-from orangengine.models.base import BaseServiceTerm
-from orangengine.models.base import BasePortRange
-from orangengine.models.base import BaseServiceGroup
-from orangengine.models.base import BasePolicy
-from orangengine.models.base import CandidatePolicy
+from orangengine.models.base import BasePortRange, BaseServiceTerm
+from orangengine.models.juniper import JuniperSRXAddress
+from orangengine.models.juniper import JuniperSRXAddressGroup
+from orangengine.models.juniper import JuniperSRXService
+from orangengine.models.juniper import JuniperSRXServiceGroup
+from orangengine.models import CandidatePolicy
 from orangengine.models.juniper import JuniperSRXPolicy
 from orangengine.errors import ConnectionError
 from orangengine.errors import BadCandidatePolicyError
@@ -85,7 +83,7 @@ class JuniperSRXDriver(BaseDriver):
         # 4 - apply and commit
 
         if not self._connected:
-            raise ConnectionError(msg="Device connection is not open")
+            raise ConnectionError("Device connection is not open")
 
         c_policy = candidate_policy.policy
 
@@ -209,19 +207,19 @@ class JuniperSRXDriver(BaseDriver):
                     name = e.text
                 elif e.tag == 'ip-prefix':
                     value = e.text
-                    a_type = BaseAddress.AddressTypes.IPv4
+                    a_type = JuniperSRXAddress.AddressTypes.IPv4
                 elif e.tag == 'dns-name':
                     value = e.find('name').text
-                    a_type = BaseAddress.AddressTypes.DNS
+                    a_type = JuniperSRXAddress.AddressTypes.DNS
                 else:
                     pass
 
-            address = BaseAddress(name, value, a_type)
+            address = JuniperSRXAddress(name, value, a_type)
             self.address_name_lookup[name] = address
             self.address_value_lookup[value].append(address)
 
         # special case: manually create "any" address
-        any_address = BaseAddress("any", "any", 1)
+        any_address = JuniperSRXAddress("any", "any", 1)
         self.address_name_lookup['any'] = any_address
         self.address_value_lookup['any'].append(any_address)
 
@@ -235,7 +233,7 @@ class JuniperSRXDriver(BaseDriver):
 
         for e_address_set in address_sets.findall('address-set'):
             name = e_address_set.find('name').text
-            address_set = BaseAddressGroup(name)
+            address_set = JuniperSRXAddressGroup(name)
             value_lookup_list = []
             for e in e_address_set.findall('address'):
                 a = e.find('name').text
@@ -262,14 +260,14 @@ class JuniperSRXDriver(BaseDriver):
                 s_name = e_application.find('name').text
                 if s_name == 'any':
                     # special case: manually build the any object
-                    any_service = BaseService(s_name, 'any', 'any')
+                    any_service = JuniperSRXService(s_name, 'any', 'any')
                     self.service_value_lookup[('any', 'any')].append(any_service)
                     self.service_name_lookup[s_name] = any_service
                     continue
                 port = None
                 if e_application.find('term') is not None:
                     # term based application
-                    service = BaseService(s_name)
+                    service = JuniperSRXService(s_name)
                     value_lookup_list = []
                     for e_term in e_application.findall('term'):
                         t_name = e_term.find('name').text
@@ -303,7 +301,7 @@ class JuniperSRXDriver(BaseDriver):
                         port = ",".join([icmp_type, icmp_code])
                     if e_application.find('destination-port') is not None:
                         port = e_application.find('destination-port').text
-                    service = BaseService(s_name, protocol, port)
+                    service = JuniperSRXService(s_name, protocol, port)
                     self.service_value_lookup[(protocol, port)].append(service)
 
                 self.service_name_lookup[s_name] = service
@@ -317,7 +315,7 @@ class JuniperSRXDriver(BaseDriver):
         for application_sets in [self.config_output['output_junos_default'], self.config_output['output_applications']]:
             for e_service_set in application_sets.findall('application-set'):
                 name = e_service_set.find('name').text
-                service_group = BaseServiceGroup(name)
+                service_group = JuniperSRXServiceGroup(name)
                 value_lookup_list = []
                 for e_application in e_service_set.findall('application'):
                     s = e_application.find('name').text
