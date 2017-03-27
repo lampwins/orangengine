@@ -278,5 +278,5 @@ class BaseDriver(object):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def apply_policy(self, policy):
+    def apply_policy(self, policy, commit=False):
         raise NotImplementedError()

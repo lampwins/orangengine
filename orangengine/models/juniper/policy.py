@@ -17,7 +17,7 @@ class JuniperSRXPolicy(BasePolicy):
 
     LoggingMap = bidict({
         BasePolicy.Logging.START: 'session-init',
-        BasePolicy.Logging.END: 'session-end',
+        BasePolicy.Logging.END: 'session-close',
     })
 
     def __init__(self, name, action, description, logging):

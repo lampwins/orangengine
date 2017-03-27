@@ -16,9 +16,11 @@ import unittest
 class TestPolicyAddressMatching(unittest.TestCase):
 
     def setUp(self):
-        self.policy = BasePolicy(name='test', action='perrmit', logging='both', description='')
-        self.policy.add_src_address(BaseAddress(a_type=1, name='test-src-address', value='1.1.1.1/32'))
-        self.policy.add_dst_address(BaseAddress(a_type=1, name='test-dst-address', value='2.2.2.2/32'))
+        self.policy = BasePolicy(name='test', action='perrmit', description='', logging='both')
+        self.policy.add_src_address(
+            BaseAddress(name='test-src-address', value='1.1.1.1/32', a_type=1, exists_on_device=False))
+        self.policy.add_dst_address(
+            BaseAddress(name='test-dst-address', value='2.2.2.2/32', a_type=1, exists_on_device=False))
 
     def test_source_address_matching(self):
         self.assertEqual(self.policy.match({'source_addresses': ['1.1.1.1/32']}), True)
@@ -31,20 +33,20 @@ class TestJuniperSRXMappers(unittest.TestCase):
 
     def setUp(self):
         # address and address groups
-        self.ipv4_address = JuniperSRXAddress(a_type=BaseAddress.AddressTypes.IPv4, name='test-ipv4-address',
-                                              value='1.1.1.1/32')
-        self.dns_address = JuniperSRXAddress(a_type=BaseAddress.AddressTypes.DNS, name='test-dns-address',
-                                             value='www.example.com')
+        self.ipv4_address = JuniperSRXAddress(name='test-ipv4-address', value='1.1.1.1/32',
+                                              a_type=BaseAddress.AddressTypes.IPv4, exists_on_device=False)
+        self.dns_address = JuniperSRXAddress(name='test-dns-address', value='www.example.com',
+                                             a_type=BaseAddress.AddressTypes.DNS, exists_on_device=False)
         self.address_group = JuniperSRXAddressGroup(name='test-address-group')
         self.address_group.add(self.ipv4_address)
         self.address_group.add(self.dns_address)
 
         # service and service groups
-        self.regular_service = JuniperSRXService('regular-service', port='666', protocol='udp')
+        self.regular_service = JuniperSRXService('regular-service', protocol='udp', port='666')
         self.term_service = JuniperSRXService('regular-service')
         self.term_service.add_term(BaseServiceTerm('term1', 'tcp', '666'))
         self.term_service.add_term(BaseServiceTerm('term2', 'udp', BasePortRange('300', '400')))
-        self.port_range_service = JuniperSRXService('regular-service', port='666-667', protocol='udp')
+        self.port_range_service = JuniperSRXService('regular-service', protocol='udp', port='666-667')
         self.servicegroup = JuniperSRXServiceGroup('test-group')
         self.servicegroup.add(self.regular_service)
         self.servicegroup.add(self.term_service)

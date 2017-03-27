@@ -47,7 +47,7 @@ def enum(*sequential, **named):
 
 
 def create_element(tag, text=None, parent=None):
-    # create an ambiguous element
+    # create an ambiguous xml element
     if parent is not None:
         e = letree.SubElement(parent, tag)
     else:
@@ -62,6 +62,8 @@ class bidict(dict):
 
     Thanks to @Basj
     http://stackoverflow.com/questions/3318625/efficient-bidirectional-hash-table-in-python
+
+    Extended to allow blind access to the inverse dict by way of __getitem__
     """
     def __init__(self, *args, **kwargs):
         super(bidict, self).__init__(*args, **kwargs)
@@ -71,10 +73,19 @@ class bidict(dict):
 
     def __setitem__(self, key, value):
         super(bidict, self).__setitem__(key, value)
-        self.inverse.setdefault(value,[]).append(key)
+        self.inverse.setdefault(value, []).append(key)
 
     def __delitem__(self, key):
-        self.inverse.setdefault(self[key],[]).remove(key)
+        self.inverse.setdefault(self[key], []).remove(key)
         if self[key] in self.inverse and not self.inverse[self[key]]:
             del self.inverse[self[key]]
         super(bidict, self).__delitem__(key)
+
+    def __getitem__(self, item):
+        try:
+            value = super(bidict, self).__getitem__(item)
+        except KeyError:
+            value = self.inverse[item]
+            if value and len(value) == 1:
+                value = value[0]
+        return value

@@ -1,18 +1,25 @@
 
 from orangengine.errors import BadCandidatePolicyError
-from orangengine.utils import is_ipv4, enum
+from orangengine.utils import is_ipv4, enum, bidict
 
 from collections import Iterable, defaultdict
 import re
 from netaddr import IPRange, IPNetwork
 from terminaltables import AsciiTable
 from functools import partial
+import abc
 
 
 class BasePolicy(object):
 
     Action = enum('ALLOW', 'DENY', 'REJECT')
     Logging = enum('START', 'END')
+
+    ActionMap = bidict({
+        Action.ALLOW: "Allow",
+        Action.DENY: "Deny",
+        Action.REJECT: "Reject",
+    })
 
     def __init__(self, name, action, description, logging):
         """init policy"""
@@ -184,7 +191,7 @@ class BasePolicy(object):
         d_addresses = self.table_address_cell(self.dst_addresses, with_names)
         services = self.table_service_cell(self._services, with_names)
 
-        table_row = [s_zones, s_addresses, d_zones, d_addresses, services, self.action]
+        table_row = [s_zones, s_addresses, d_zones, d_addresses, services, self.ActionMap[self.action]]
 
         table = AsciiTable([table_header, table_row])
         table.title = "Policy: " + self.name
@@ -343,6 +350,6 @@ class EffectivePolicy(object):
                         addresses = focus_target.table_value(with_names=False)
                         services = BasePolicy.table_service_cell(policy.services_objects)
 
-                    table_rows.append([zones, addresses, services, policy.action])
+                    table_rows.append([zones, addresses, services, policy.ActionMap[policy.action]])
 
         return table_rows
