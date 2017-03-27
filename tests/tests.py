@@ -18,9 +18,9 @@ class TestPolicyAddressMatching(unittest.TestCase):
     def setUp(self):
         self.policy = BasePolicy(name='test', action='perrmit', description='', logging='both')
         self.policy.add_src_address(
-            BaseAddress(name='test-src-address', value='1.1.1.1/32', a_type=1, exists_on_device=False))
+            BaseAddress(name='test-src-address', value='1.1.1.1/32', a_type=1))
         self.policy.add_dst_address(
-            BaseAddress(name='test-dst-address', value='2.2.2.2/32', a_type=1, exists_on_device=False))
+            BaseAddress(name='test-dst-address', value='2.2.2.2/32', a_type=1))
 
     def test_source_address_matching(self):
         self.assertEqual(self.policy.match({'source_addresses': ['1.1.1.1/32']}), True)
@@ -34,9 +34,9 @@ class TestJuniperSRXMappers(unittest.TestCase):
     def setUp(self):
         # address and address groups
         self.ipv4_address = JuniperSRXAddress(name='test-ipv4-address', value='1.1.1.1/32',
-                                              a_type=BaseAddress.AddressTypes.IPv4, exists_on_device=False)
+                                              a_type=BaseAddress.AddressTypes.IPv4)
         self.dns_address = JuniperSRXAddress(name='test-dns-address', value='www.example.com',
-                                             a_type=BaseAddress.AddressTypes.DNS, exists_on_device=False)
+                                             a_type=BaseAddress.AddressTypes.DNS)
         self.address_group = JuniperSRXAddressGroup(name='test-address-group')
         self.address_group.add(self.ipv4_address)
         self.address_group.add(self.dns_address)
