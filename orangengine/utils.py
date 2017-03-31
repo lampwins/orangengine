@@ -69,7 +69,7 @@ class bidict(dict):
         super(bidict, self).__init__(*args, **kwargs)
         self.inverse = {}
         for key, value in self.iteritems():
-            self.inverse.setdefault(value,[]).append(key)
+            self.inverse.setdefault(value, []).append(key)
 
     def __setitem__(self, key, value):
         super(bidict, self).__setitem__(key, value)

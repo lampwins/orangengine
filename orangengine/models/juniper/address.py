@@ -18,7 +18,7 @@ class JuniperSRXAddress(BaseAddress):
         if self.a_type == BaseAddress.AddressTypes.IPv4:
             # ipv4
             create_element('ip-prefix', text=self.value, parent=address_element)
-        else:
+        elif self.a_type == BaseAddress.AddressTypes.DNS:
             # dns
             dns_element = create_element('dns-name', parent=address_element)
             create_element('name', text=self.value, parent=dns_element)

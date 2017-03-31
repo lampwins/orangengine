@@ -37,9 +37,9 @@ class BaseDriver(object):
         self.device = None
 
         # connection params
-        self._username = kwargs.get('username')
-        self._password = kwargs.get('password')
-        self._host = kwargs.get('host')
+        self._username = kwargs.pop('username')
+        self._password = kwargs.pop('password')
+        self._host = kwargs.pop('host')
         self._additional_params = kwargs
 
         # address lookup dictionaries
@@ -80,7 +80,7 @@ class BaseDriver(object):
         """
 
         if not self._connected:
-            self.open_connection(self._username, self._password, self._host, self._additional_params)
+            self.open_connection(self._username, self._password, self._host, **self._additional_params)
 
         # first we need to clear all of the current objects
 
@@ -178,10 +178,13 @@ class BaseDriver(object):
         if not all(k in ALLOWED_POLICY_KEYS for k in keys):
             raise ValueError('Invalid key in match criteria.')
 
-    def policy_match(self, match_criteria, match_containing_networks=True, exact=False):
+    def policy_match(self, match_criteria, match_containing_networks=True, exact=False, policies=None):
         """
         match policy tuples exactly by match criteria (also a tuple) and return those policies
         """
+        if not policies:
+            policies = self.policies
+
         self._policy_key_check(match_criteria.keys())
 
         # silently append /32 to any ipv4 address that is missing cidr
@@ -191,20 +194,20 @@ class BaseDriver(object):
         if 'destination_addresses' in match_criteria:
             match_criteria['destination_addresses'] = [missing_cidr(a) for a in match_criteria['destination_addresses']]
 
-        policies = [p for p in self.policies if p.match(match_criteria, exact=exact,
-                                                        match_containing_networks=match_containing_networks)]
+        matches = [p for p in policies if p.match(match_criteria, exact=exact,
+                                                  match_containing_networks=match_containing_networks)]
 
-        return policies
+        return matches
 
-    def candidate_policy_match(self, match_criteria):
+    def candidate_policy_match(self, match_criteria, policies=None):
         """
         determine the best policy to append an element from the match criteria to
         return those policies that match and the unique "target" element, or None if no match is found
         """
-        self._policy_key_check(match_criteria.keys())
+        if not policies:
+            policies = self.policies
 
-        set_dict = {}
-        target_element = {}
+        self._policy_key_check(match_criteria.keys())
 
         # shadow policy check (shadow implicitly includes duplicates)
         shadow_policies = list(self.policy_match(match_criteria))
@@ -214,7 +217,7 @@ class BaseDriver(object):
 
         # now we find all candidate policies
         candidate_match = tuple([(p, p.candidate_match(match_criteria, match_containing_networks=True, exact=True))
-                                for p in self.policies])
+                                for p in policies])
         # filter out tuples that are false (not a candidate match)
         candidate_tuples = list(filter((lambda x: x[1]), candidate_match))
 

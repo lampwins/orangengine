@@ -12,13 +12,14 @@ import abc
 
 class BasePolicy(object):
 
-    Action = enum('ALLOW', 'DENY', 'REJECT')
+    Action = enum('ALLOW', 'DENY', 'REJECT', 'DROP')
     Logging = enum('START', 'END')
 
     ActionMap = bidict({
         Action.ALLOW: "Allow",
         Action.DENY: "Deny",
         Action.REJECT: "Reject",
+        Action.DROP: 'Drop',
     })
 
     def __init__(self, name, action, description, logging):

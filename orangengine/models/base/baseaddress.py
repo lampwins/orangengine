@@ -4,7 +4,7 @@ from orangengine.utils import enum
 
 class BaseAddress(object):
 
-    AddressTypes = enum('IPv4', 'DNS')
+    AddressTypes = enum('IPv4', 'DNS', 'RANGE', 'ANY')
 
     def __init__(self, name, value, a_type):
         """init address object"""
