@@ -156,7 +156,7 @@ class JuniperSRXDriver(BaseDriver):
             cu.commit()
         # print letree.tostring(configuration, pretty_print=True)
 
-    def open_connection(self, username, password, host, additional_params):
+    def open_connection(self, username, password, host, **additional_params):
         """
         open the device connection
         """

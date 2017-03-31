@@ -249,7 +249,7 @@ class BaseDriver(object):
                                destination_policies=destination_policies)
 
     @abc.abstractmethod
-    def open_connection(self, username, password, host, additional_params):
+    def open_connection(self, username, password, host, **additional_params):
         raise NotImplementedError()
 
     @abc.abstractmethod
