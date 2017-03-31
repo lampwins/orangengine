@@ -103,22 +103,16 @@ class PaloAltoPanoramaDriver(PaloAltoBaseDriver):
             # source addresses
             for sa in policy.pandevice_object.source:
                 address = _DeviceGroupHierarchy.Node.find(node, sa, PaloAltoAddress)
-                if not address:
-                    address = _DeviceGroupHierarchy.Node.find(node, sa, PaloAltoAddressGroup)
                 policy.add_src_address(address)
 
             # destination addresses
             for da in policy.pandevice_object.destination:
                 address = _DeviceGroupHierarchy.Node.find(node, da, PaloAltoAddress)
-                if not address:
-                    address = _DeviceGroupHierarchy.Node.find(node, da, PaloAltoAddressGroup)
                 policy.add_dst_address(address)
 
             # services
             for s in policy.pandevice_object.service:
                 service = _DeviceGroupHierarchy.Node.find(node, s, PaloAltoService)
-                if not service:
-                    service = _DeviceGroupHierarchy.Node.find(node, s, PaloAltoServiceGroup)
                 policy.add_service(service)
 
         # get all the device groups
