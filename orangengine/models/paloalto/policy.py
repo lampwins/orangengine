@@ -24,3 +24,11 @@ class PaloAltoPolicy(BasePolicy):
 
         super(PaloAltoPolicy, self).__init__(name=pandevice_object.name, action=pandevice_object.action,
                                              description=pandevice_object.description, logging=logging)
+
+    @staticmethod
+    def table_service_cell(services, with_names=False):
+        """handle the application-default case"""
+        if services[0] is None:
+            return "application-default\n"
+        else:
+            return super(PaloAltoPolicy, PaloAltoPolicy).table_service_cell(services, with_names=False)

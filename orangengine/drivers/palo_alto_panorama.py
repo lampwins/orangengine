@@ -30,6 +30,37 @@ class PaloAltoPanoramaDriver(PaloAltoBaseDriver):
         super(PaloAltoPanoramaDriver, self).__init__(*args, **kwargs)
 
         self.dg_hierarchy = None
+        self.dg_context = None
+
+    def set_context(self, device_group=None):
+        """Set the device_group context for future operations"""
+        self.dg_context = self.dg_hierarchy.get_node(device_group)
+
+    def _get_context(self, device_group_name=None):
+        if device_group_name:
+            context = self.dg_hierarchy.get_node(device_group_name)
+            if not context:
+                # use the shared dg context
+                return self.dg_hierarchy.root
+            else:
+                return context
+        else:
+            return self.dg_context
+
+    def policy_match(self, match_criteria, match_containing_networks=True, exact=False, policies=None,
+                     device_group=None, include_parents=True):
+        """Policy Match
+
+        Overriden to allow passing an optional device group context which defaults to the shared
+        namespace.
+        """
+        context = self._get_context(device_group)
+        rule_base = context.get_rulebase(include_parents)
+
+        # now call the super to actually do the work
+        matches = super(PaloAltoPanoramaDriver, self).policy_match(match_criteria, match_containing_networks=True,
+                                                                   exact=False, policies=rule_base)
+        return matches
 
     def _get_config(self):
         """refresh the pandevice object and create the device group hierarchy"""
@@ -39,15 +70,18 @@ class PaloAltoPanoramaDriver(PaloAltoBaseDriver):
 
     def _parse_addresses(self):
         """retrieve all the pandevice.objects.AddressObjects's and parse them and store in the dg node"""
+
         # create the "any" object
         any_address_pandevice_obj = objects.AddressObject()
         any_address_pandevice_obj.name = 'any'
         any_address_pandevice_obj.type = 'any'
         any_address_pandevice_obj.value = 'any'
         any_address = PaloAltoAddress(any_address_pandevice_obj)
+
         for dg_node in self.dg_hierarchy.get_all_nodes():
             for a in dg_node.device_group.findall(objects.AddressObject):
                 dg_node.objects['addresses'].append(PaloAltoAddress(a))
+
             # add the "any" abject
             dg_node.objects['addresses'].append(any_address)
 
@@ -66,15 +100,18 @@ class PaloAltoPanoramaDriver(PaloAltoBaseDriver):
 
     def _parse_services(self):
         """retrieve all the pandevice.objects.ServiceObject's and parse them and store in the dg node"""
-        # create the "any"object
+
+        # create the "any" object
         any_service_pandevice_obj = objects.ServiceObject()
         any_service_pandevice_obj.name = 'any'
         any_service_pandevice_obj.protocol = 'any'
         any_service_pandevice_obj.destination_port = 'any'
         any_service = PaloAltoService(any_service_pandevice_obj)
+
         for dg_node in self.dg_hierarchy.get_all_nodes():
             for s in dg_node.device_group.findall(objects.ServiceObject):
                 dg_node.objects['services'].append(PaloAltoService(s))
+
             # add the "any" object
             dg_node.objects['services'].append(any_service)
 
@@ -156,6 +193,15 @@ class _DeviceGroupHierarchy(object):
                 'post_rulebase': []
             }
 
+        def get_rulebase(self, include_parents=True):
+            """return a single list containing all policies from pre and post rulebases"""
+            rulebase = []
+            rulebase.extend(self.objects['pre_rulebase'])
+            rulebase.extend(self.objects['post_rulebase'])
+            if include_parents and self.parent:
+                rulebase.extend(self.parent.get_rulebase())
+            return rulebase
+
         @staticmethod
         def find(node, name, cls, include_sister_namespace=True, recursive=True):
             # this filter will either return an empty list or a single member list
@@ -206,7 +252,14 @@ class _DeviceGroupHierarchy(object):
                 self._parse_nodes(child, node)
 
     def get_node(self, device_group_name):
-        return self.lookup.get(device_group_name)
+        if device_group_name:
+            node = self.lookup.get(device_group_name)
+            if not node:
+                raise LookupError('Device group could not be found')
+        else:
+            node = None
+
+        return node
 
     def get_all_nodes(self):
         return self.lookup.values()

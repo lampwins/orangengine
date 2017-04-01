@@ -55,12 +55,13 @@ class BasePolicy(object):
         return a tuple representation of the policy with normalized values
         """
 
-        s_addrs = set(BasePolicy.__flatten([a.value for a in self.src_addresses]))
-        d_addrs = set(BasePolicy.__flatten([a.value for a in self.dst_addresses]))
-        services = set(BasePolicy.__flatten([s.value for s in self._services]))
+        # s_addrs = set(BasePolicy.__flatten([a.value for a in self.src_addresses]))
+        # d_addrs = set(BasePolicy.__flatten([a.value for a in self.dst_addresses]))
+        # services = set(BasePolicy.__flatten([s.value for s in self._services]))
 
         if item == 'value':
-            return self.src_zones, self.dst_zones, list(s_addrs), list(d_addrs), list(services), self.action
+            # return self.src_zones, self.dst_zones, list(s_addrs), list(d_addrs), list(services), self.action
+            pass
 
         # for use in policy match element reducing
         elif item == 'source_zones':
@@ -68,11 +69,11 @@ class BasePolicy(object):
         elif item == 'destination_zones':
             return self.dst_zones
         elif item == 'source_addresses':
-            return s_addrs
+            return set(BasePolicy.__flatten([a.value for a in self.src_addresses]))
         elif item == 'destination_addresses':
-            return d_addrs
+            return set(BasePolicy.__flatten([a.value for a in self.dst_addresses]))
         elif item == 'services':
-            return services
+            return set(BasePolicy.__flatten([s.value for s in self._services]))
         elif item == 'services_objects':
             return self._services
 
