@@ -376,3 +376,11 @@ class JuniperSRXDriver(BaseDriver):
                             policy.add_service(self.get_service_object_by_name(e.text))
 
                 self._add_policy(policy)
+
+    def _parse_applications(self):
+        # we don't do applications for SRX
+        pass
+
+    def _parse_application_groups(self):
+        # we don't do application groups for SRX
+        pass

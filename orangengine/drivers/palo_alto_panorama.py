@@ -5,6 +5,8 @@ from orangengine.models.paloalto import PaloAltoAddress
 from orangengine.models.paloalto import PaloAltoAddressGroup
 from orangengine.models.paloalto import PaloAltoService
 from orangengine.models.paloalto import PaloAltoServiceGroup
+from orangengine.models.paloalto import PaloAltoApplication
+from orangengine.models.paloalto import PaloAltoApplicationGroup
 
 from pandevice import panorama
 from pandevice import objects
@@ -55,16 +57,35 @@ class PaloAltoPanoramaDriver(PaloAltoBaseDriver):
         namespace.
         """
         context = self._get_context(device_group)
-        rule_base = context.get_rulebase(include_parents)
+        if not policies:
+            policies = context.get_rulebase(include_parents)
 
         # now call the super to actually do the work
         matches = super(PaloAltoPanoramaDriver, self).policy_match(match_criteria, match_containing_networks=True,
-                                                                   exact=False, policies=rule_base)
+                                                                   exact=False, policies=policies)
         return matches
+
+    def candidate_policy_match(self, match_criteria, policies=None, device_group=None, include_parents=True):
+        """Policy Match
+
+        Overriden to allow passing an optional device group context which defaults to the shared
+        namespace.
+        """
+        context = self._get_context(device_group)
+        if not policies:
+            policies = context.get_rulebase(include_parents)
+
+        # now call the super to actually do the work
+        candidate_policy = super(PaloAltoPanoramaDriver, self).candidate_policy_match(match_criteria, policies)
+
+        return candidate_policy
 
     def _get_config(self):
         """refresh the pandevice object and create the device group hierarchy"""
-        self.device.refresh()
+
+        # now call the super
+        super(PaloAltoPanoramaDriver, self)._get_config()
+
         dg_xml = self.device.op('<show><dg-hierarchy></dg-hierarchy></show>', cmd_xml=False)
         self.dg_hierarchy = _DeviceGroupHierarchy(self.device, dg_xml)
 
@@ -125,6 +146,46 @@ class PaloAltoPanoramaDriver(PaloAltoBaseDriver):
                     service_group.add(_DeviceGroupHierarchy.Node.find(dg_node, v, PaloAltoService))
                 dg_node.objects['service_groups'].append(service_group)
 
+    def _parse_applications(self):
+        """retrieve all the pandevice.objects.Application's and parse them and store in the dg node"""
+
+        # create the "any" object
+        any_application_pandevice_obj = objects.ApplicationObject()
+        any_application_pandevice_obj.name = 'any'
+        any_applciation = PaloAltoApplication(any_application_pandevice_obj)
+
+        for dg_node in self.dg_hierarchy.get_all_nodes():
+            for app in dg_node.device_group.findall(objects.ApplicationObject):
+                dg_node.objects['applications'].append(PaloAltoApplication(app))
+
+            # add the "any" object
+            dg_node.objects['applications'].append(any_applciation)
+
+        # now load the predefined applications into the shared namespace
+        for app in self.device.predefined.application_objects.values():
+            self.dg_hierarchy.root.objects['applications'].append(PaloAltoApplication(app))
+
+    def _parse_application_groups(self):
+        """retrieve all the pandevice.objects.ApplicationGroups's and parse them and store in the dg node"""
+        for dg_node in self.dg_hierarchy.get_all_nodes():
+
+            # grab teh regular groups
+            for app_group in dg_node.device_group.findall(objects.ApplicationGroup):
+                application_group = PaloAltoApplicationGroup(app_group)
+                for app in app_group.value:
+                    # find and link the actual object
+                    application_group.add(_DeviceGroupHierarchy.Node.find(dg_node, app, PaloAltoApplication))
+                dg_node.objects['application_groups'].append(application_group)
+
+        # now grab the application containers from the predefined area and store them in the shared namespace
+        for app_container in self.device.predefined.application_container_objects.values():
+            # app containers are semantically app groups
+            application_group = PaloAltoApplicationGroup(app_container)
+            for app in app_container.applications:
+                # find and link the actual objects from the shared namespace
+                application_group.add(_DeviceGroupHierarchy.Node.find(self.dg_hierarchy.root, app, PaloAltoApplication))
+            self.dg_hierarchy.root.objects['application_groups'].append(application_group)
+
     def _parse_policies(self):
         """retrieve all the pandevice.policies.SecurityRule's and parse them and store in the dg node"""
 
@@ -146,6 +207,11 @@ class PaloAltoPanoramaDriver(PaloAltoBaseDriver):
             for da in policy.pandevice_object.destination:
                 address = _DeviceGroupHierarchy.Node.find(node, da, PaloAltoAddress)
                 policy.add_dst_address(address)
+
+            # applications
+            for app in policy.pandevice_object.application:
+                application = _DeviceGroupHierarchy.Node.find(node, app, PaloAltoApplication)
+                policy.add_application(application)
 
             # services
             for s in policy.pandevice_object.service:
@@ -187,6 +253,7 @@ class _DeviceGroupHierarchy(object):
                 'services': [],
                 'service_groups': [],
                 'applications': [],
+                'application_groups': [],
                 'addresses': [],
                 'address_groups': [],
                 'pre_rulebase': [],

@@ -18,18 +18,18 @@ NETMIKO_DRIVER_MAPPINGS = {
     'palo_alto_panorama': 'paloalto_panos',
 }
 
-ALLOWED_POLICY_KEYS = (
-    'source_zones',
-    'destination_zones',
-    'source_addresses',
-    'destination_addresses',
-    'services',
-    'action',
-    'logging',
-)
-
 
 class BaseDriver(object):
+
+    ALLOWED_POLICY_KEYS = (
+        'source_zones',
+        'destination_zones',
+        'source_addresses',
+        'destination_addresses',
+        'services',
+        'action',
+        'logging',
+    )
 
     def __init__(self, refresh=False, *args, **kwargs):
 
@@ -112,6 +112,8 @@ class BaseDriver(object):
         self._parse_address_groups()
         self._parse_services()
         self._parse_service_groups()
+        self._parse_applications()
+        self._parse_application_groups()
         self._parse_policies()
 
     def _address_lookup_by_name(self, name):
@@ -173,9 +175,8 @@ class BaseDriver(object):
         # self.policy_tuple_lookup.append((policy.value, policy))
         self.policy_name_lookup[policy.name] = policy
 
-    @staticmethod
-    def _policy_key_check(keys):
-        if not all(k in ALLOWED_POLICY_KEYS for k in keys):
+    def _policy_key_check(self, keys):
+        if not all(k in self.ALLOWED_POLICY_KEYS for k in keys):
             raise ValueError('Invalid key in match criteria.')
 
     def policy_match(self, match_criteria, match_containing_networks=True, exact=False, policies=None):
@@ -210,10 +211,10 @@ class BaseDriver(object):
         self._policy_key_check(match_criteria.keys())
 
         # shadow policy check (shadow implicitly includes duplicates)
-        shadow_policies = list(self.policy_match(match_criteria))
+        shadow_policies = list(self.policy_match(match_criteria, policies=policies))
         if len(shadow_policies) != 0:
             # this is a shadowed policy
-            raise ShadowedPolicyError
+            raise ShadowedPolicyError(message="Candidate is shadowed by {0}".format(shadow_policies[0].name))
 
         # now we find all candidate policies
         candidate_match = tuple([(p, p.candidate_match(match_criteria, match_containing_networks=True, exact=True))
@@ -274,6 +275,14 @@ class BaseDriver(object):
 
     @abc.abstractmethod
     def _parse_policies(self):
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def _parse_applications(self):
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def _parse_application_groups(self):
         raise NotImplementedError()
 
     @abc.abstractmethod

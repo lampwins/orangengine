@@ -1,6 +1,6 @@
 
 from orangengine.models.base import BasePolicy
-from orangengine.utils import bidict
+from orangengine.utils import bidict, flatten
 
 
 class PaloAltoPolicy(BasePolicy):
@@ -22,8 +22,21 @@ class PaloAltoPolicy(BasePolicy):
         if pandevice_object.log_end:
             logging.append(BasePolicy.Logging.END)
 
-        super(PaloAltoPolicy, self).__init__(name=pandevice_object.name, action=pandevice_object.action,
+        self._applications = []
+
+        super(PaloAltoPolicy, self).__init__(name=pandevice_object.name, action=self.ActionMap[pandevice_object.action],
                                              description=pandevice_object.description, logging=logging)
+
+    def add_application(self, app):
+        self._applications.append(app)
+
+    def __getattr__(self, item):
+        """add applications access or call super"""
+
+        if item == 'applications':
+            return set(flatten([a.value for a in self._applications]))
+        else:
+            return super(PaloAltoPolicy, self).__getattr__(item)
 
     @staticmethod
     def table_service_cell(services, with_names=False):
@@ -32,3 +45,23 @@ class PaloAltoPolicy(BasePolicy):
             return "application-default\n"
         else:
             return super(PaloAltoPolicy, PaloAltoPolicy).table_service_cell(services, with_names=False)
+
+    def table_application_cell(self):
+        return "\n".join([a.table_value() for a in self._applications]) + '\n'
+
+    def table_header(self):
+        """Return the table header for the policy
+        """
+        return ["Src Zones", "Src Addresses", "Dst Zones", "Dst Addresses", "Applications", "Services", "Action"]
+
+    def table_row(self, with_names=False):
+        """Return the table row for the based policy
+        """
+        s_zones = self.table_zone_cell(self.src_zones)
+        d_zones = self.table_zone_cell(self.dst_zones)
+        s_addresses = self.table_address_cell(self.src_addresses, with_names)
+        d_addresses = self.table_address_cell(self.dst_addresses, with_names)
+        services = self.table_service_cell(self._services, with_names)
+        applications = self.table_application_cell()
+
+        return [s_zones, s_addresses, d_zones, d_addresses, applications, services, self.ActionMap[self.action]]

@@ -1,3 +1,4 @@
+pyparsing
 terminaltables
 pandevice==0.4.0
 junos-eznc>=2.0.1

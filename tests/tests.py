@@ -10,6 +10,14 @@ from orangengine.models.juniper import JuniperSRXAddressGroup
 from orangengine.models.juniper import JuniperSRXService
 from orangengine.models.juniper import JuniperSRXServiceGroup
 
+from orangengine.models.paloalto import PaloAltoPolicy
+from orangengine.models.paloalto import PaloAltoApplication
+from orangengine.models.paloalto import PaloAltoApplicationGroup
+from orangengine.models.paloalto import PaloAltoAddress
+from orangengine.models.paloalto import PaloAltoAddressGroup
+from orangengine.models.paloalto import PaloAltoService
+from orangengine.models.paloalto import PaloAltoServiceGroup
+
 import unittest
 
 

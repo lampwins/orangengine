@@ -1,8 +1,8 @@
 
 from orangengine.errors import BadCandidatePolicyError
-from orangengine.utils import is_ipv4, enum, bidict
+from orangengine.utils import is_ipv4, enum, bidict, flatten
 
-from collections import Iterable, defaultdict
+from collections import defaultdict
 import re
 from netaddr import IPRange, IPNetwork
 from terminaltables import AsciiTable
@@ -55,9 +55,9 @@ class BasePolicy(object):
         return a tuple representation of the policy with normalized values
         """
 
-        # s_addrs = set(BasePolicy.__flatten([a.value for a in self.src_addresses]))
-        # d_addrs = set(BasePolicy.__flatten([a.value for a in self.dst_addresses]))
-        # services = set(BasePolicy.__flatten([s.value for s in self._services]))
+        # s_addrs = set(flatten([a.value for a in self.src_addresses]))
+        # d_addrs = set(flatten([a.value for a in self.dst_addresses]))
+        # services = set(flatten([s.value for s in self._services]))
 
         if item == 'value':
             # return self.src_zones, self.dst_zones, list(s_addrs), list(d_addrs), list(services), self.action
@@ -69,25 +69,16 @@ class BasePolicy(object):
         elif item == 'destination_zones':
             return self.dst_zones
         elif item == 'source_addresses':
-            return set(BasePolicy.__flatten([a.value for a in self.src_addresses]))
+            return set(flatten([a.value for a in self.src_addresses]))
         elif item == 'destination_addresses':
-            return set(BasePolicy.__flatten([a.value for a in self.dst_addresses]))
+            return set(flatten([a.value for a in self.dst_addresses]))
         elif item == 'services':
-            return set(BasePolicy.__flatten([s.value for s in self._services]))
+            return set(flatten([s.value for s in self._services]))
         elif item == 'services_objects':
             return self._services
 
         else:
             raise AttributeError()
-
-    @staticmethod
-    def __flatten(l):
-        for el in l:
-            if isinstance(el, Iterable) and not isinstance(el, basestring) and not isinstance(el, tuple):
-                for sub in BasePolicy.__flatten(el):
-                    yield sub
-            else:
-                yield el
 
     @staticmethod
     def __in_network(value, p_value, exact_match=False):
@@ -165,8 +156,6 @@ class BasePolicy(object):
         # if we survived, this is a candidate policy so return which key is unique
         return unique_key
 
-
-
     @staticmethod
     def table_address_cell(addresses, with_names=False):
         return "\n".join([a.table_value(with_names) for a in addresses]) + '\n'
@@ -179,21 +168,31 @@ class BasePolicy(object):
     def table_zone_cell(zones):
         return "\n".join([z for z in zones]) + '\n'
 
-    def to_table(self, with_names=False):
-        """Return the policy as an ascii tables
-
-        Args:
-            with_names (bool): Include object names
+    def table_header(self):
+        """Return the table header for the based policy
         """
-        table_header = ["Src Zones", "Src Addresses", "Dst Zones", "Dst Addresses", "Services", "Action"]
+        return ["Src Zones", "Src Addresses", "Dst Zones", "Dst Addresses", "Services", "Action"]
 
+    def table_row(self, with_names=False):
+        """Return the table row for the based policy
+        """
         s_zones = self.table_zone_cell(self.src_zones)
         d_zones = self.table_zone_cell(self.dst_zones)
         s_addresses = self.table_address_cell(self.src_addresses, with_names)
         d_addresses = self.table_address_cell(self.dst_addresses, with_names)
         services = self.table_service_cell(self._services, with_names)
 
-        table_row = [s_zones, s_addresses, d_zones, d_addresses, services, self.ActionMap[self.action]]
+        return [s_zones, s_addresses, d_zones, d_addresses, services, self.ActionMap[self.action]]
+
+    def to_table(self, with_names=False):
+        """Return the policy as an ascii tables
+
+        Args:
+            with_names (bool): Include object names
+        """
+        table_header = self.table_header()
+
+        table_row = self.table_row(with_names=with_names)
 
         table = AsciiTable([table_header, table_row])
         table.title = "Policy: " + self.name

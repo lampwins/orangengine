@@ -1,6 +1,7 @@
 """
 utility functions
 """
+from collections import Iterable
 
 from netaddr import IPNetwork, IPAddress, IPRange
 from lxml import etree as letree
@@ -89,3 +90,14 @@ class bidict(dict):
             if value and len(value) == 1:
                 value = value[0]
         return value
+
+
+def flatten(l):
+    """Generate a flatten list of elements from an n-depth nested list
+    """
+    for el in l:
+        if isinstance(el, Iterable) and not isinstance(el, basestring) and not isinstance(el, tuple):
+            for sub in flatten(el):
+                yield sub
+        else:
+            yield el
