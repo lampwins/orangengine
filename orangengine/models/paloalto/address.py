@@ -2,6 +2,8 @@
 from orangengine.models.base import BaseAddress
 from orangengine.utils import bidict
 
+from pandevice import objects
+
 
 class PaloAltoAddress(BaseAddress):
     """Palo Alto Address
@@ -23,3 +25,15 @@ class PaloAltoAddress(BaseAddress):
 
         super(PaloAltoAddress, self).__init__(name=pandevice_object.name, value=pandevice_object.value,
                                               a_type=PaloAltoAddress.TypeMap[pandevice_object.type])
+
+    @classmethod
+    def from_criteria(cls, criteria):
+        """Create an instance from the provided criteria
+        """
+
+        pandevice_object = objects.AddressObject()
+        pandevice_object.name = criteria['name']
+        pandevice_object.value = criteria['value']
+        pandevice_object.type = cls.TypeMap[criteria['a_type']]
+
+        return cls(pandevice_object)

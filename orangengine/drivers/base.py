@@ -5,7 +5,7 @@ from collections import defaultdict
 
 from orangengine.errors import ShadowedPolicyError
 from orangengine.errors import DuplicatePolicyError
-from orangengine.models.base import CandidatePolicy
+from orangengine.models.base import CandidatePolicy, BasePolicy
 from orangengine.utils import is_ipv4, missing_cidr
 from orangengine.models.base import EffectivePolicy
 
@@ -20,6 +20,8 @@ NETMIKO_DRIVER_MAPPINGS = {
 
 
 class BaseDriver(object):
+
+    PolicyClass = BasePolicy
 
     ALLOWED_POLICY_KEYS = (
         'source_zones',
@@ -175,6 +177,11 @@ class BaseDriver(object):
         # self.policy_tuple_lookup.append((policy.value, policy))
         self.policy_name_lookup[policy.name] = policy
 
+    @staticmethod
+    @abc.abstractmethod
+    def tag_delta(expression, tag_list):
+        raise NotImplementedError()
+
     def _policy_key_check(self, keys):
         if not all(k in self.ALLOWED_POLICY_KEYS for k in keys):
             raise ValueError('Invalid key in match criteria.')
@@ -222,18 +229,21 @@ class BaseDriver(object):
         # filter out tuples that are false (not a candidate match)
         candidate_tuples = list(filter((lambda x: x[1]), candidate_match))
 
-        target_element_key = candidate_tuples[0][1]
+        if candidate_tuples:
+            target_element_key = candidate_tuples[0][1]
+        else:
+            target_element_key = None
 
         if len(candidate_tuples) == 0 and all(target_element_key == ct[1] for ct in candidate_tuples):
             # no valid matches or more than one target element identified (meaning this will have to be a new policy)
-            return CandidatePolicy(target_dict=match_criteria, method=CandidatePolicy.NEW_POLICY)
+            return CandidatePolicy(policy_criteria=match_criteria, method=CandidatePolicy.Method.NEW_POLICY)
         else:
 
             matches = [ct[0] for ct in candidate_tuples]
 
-            return CandidatePolicy(target_dict={target_element_key: match_criteria[target_element_key]},
+            return CandidatePolicy(policy_criteria={target_element_key: match_criteria[target_element_key]},
                                    matched_policies=matches,
-                                   method=CandidatePolicy.APPEND_POLICY)
+                                   method=CandidatePolicy.Method.APPEND)
 
     def effective_policy(self, address, match_containing_networks=True):
         """
@@ -286,7 +296,7 @@ class BaseDriver(object):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def apply_candidate_policy(self, candidate_policy):
+    def apply_candidate_policy(self, candidate_policy, commit=False):
         raise NotImplementedError()
 
     @abc.abstractmethod

@@ -1,4 +1,7 @@
 
+from pandevice.objects import ApplicationContainer
+
+
 class PaloAltoApplicationGroup(object):
     """Palo Alto Application Group
 
@@ -20,7 +23,11 @@ class PaloAltoApplicationGroup(object):
         """
 
         if item == 'value':
-            return [a.value for a in self.elements]
+            if isinstance(self.pandevice_object, ApplicationContainer):
+                # we treat app containers like regular apps for the purposes of their value
+                return self.name
+            else:
+                return [a.value for a in self.elements]
         else:
             raise AttributeError
 

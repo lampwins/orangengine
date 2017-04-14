@@ -22,7 +22,9 @@ from jnpr.junos.utils.config import Config
 # TODO refactor comments
 class JuniperSRXDriver(BaseDriver):
 
-    def apply_policy(self, policy):
+    PolicyClass = JuniperSRXPolicy
+
+    def apply_policy(self, policy, commit=False):
         pass
 
     def apply_candidate_policy(self, candidate_policy, merge=True):

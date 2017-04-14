@@ -80,3 +80,11 @@ class BaseService(object):
             if isinstance(self.value, list):
                 return "\n".join([s[0] + "/" + s[1] for s in self.value])
             return self.value[0] + "/" + self.value[1]
+
+    @classmethod
+    def from_criteria(cls, criteria):
+        """Create an instance from the provided criteria
+        """
+
+        return cls(criteria['name'], criteria['protocol'], criteria['port'])
+

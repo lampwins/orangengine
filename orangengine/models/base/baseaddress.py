@@ -25,3 +25,10 @@ class BaseAddress(object):
             return self.name + " - " + self.value
         else:
             return self.value
+
+    @classmethod
+    def from_criteria(cls, criteria):
+        """Create an instance from the provided criteria
+        """
+
+        return cls(criteria['name'], criteria['value'], criteria['a_type'])

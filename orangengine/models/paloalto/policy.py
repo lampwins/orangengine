@@ -2,6 +2,8 @@
 from orangengine.models.base import BasePolicy
 from orangengine.utils import bidict, flatten
 
+from pandevice import policies
+
 
 class PaloAltoPolicy(BasePolicy):
 
@@ -65,3 +67,22 @@ class PaloAltoPolicy(BasePolicy):
         applications = self.table_application_cell()
 
         return [s_zones, s_addresses, d_zones, d_addresses, applications, services, self.ActionMap[self.action]]
+
+    @classmethod
+    def from_criteria(cls, criteria):
+        """Create an instance from the provided criteria
+        """
+
+        logging_criteria = criteria.get('logging', [])
+
+        pandevice_object = policies.SecurityRule()
+        pandevice_object.name = criteria['name']
+        pandevice_object.description = criteria.get('description', '')
+        pandevice_object.action = criteria['action']
+
+        if 'start' in logging_criteria or 'both' in logging_criteria:
+            pandevice_object.log_start = True
+        if 'end' in logging_criteria or 'both' in logging_criteria:
+            pandevice_object.log_end = True
+
+        return cls(pandevice_object)
