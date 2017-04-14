@@ -81,7 +81,7 @@ class BasePolicy(object):
             raise AttributeError()
 
     @staticmethod
-    def __in_network(value, p_value, exact_match=False):
+    def _in_network(value, p_value, exact_match=False):
         """
 
         """
@@ -125,11 +125,15 @@ class BasePolicy(object):
             if p_value == 'any' and key in ['source_addresses', 'destination_addresses', 'services']:
                 # 'any' as address constitutes a match, so move on
                 continue
+            elif key == 'action':
+                # compare against the converted value
+                if self.ActionMap[value] != p_value:
+                    return False
             elif len(value) > len(p_value):
                 # more values in the match than the policy, fail
                 return False
             elif match_containing_networks and key in ['source_addresses', 'destination_addresses']:
-                if not self.__in_network(value, p_value, exact_match=True):
+                if not self._in_network(value, p_value, exact_match=True):
                     return False
             elif exact and not set(p_value) == set(value):
                 return False
@@ -199,12 +203,20 @@ class BasePolicy(object):
 
         return table.table
 
+    @classmethod
+    def from_criteria(cls, criteria):
+        """Create an instance from the provided criteria
+        """
 
-CANDIDATE_POLICY_METHOD = {
-    'new_policy': 1,
-    'append': 2,
-    'tag': 3,
-}
+        logging = []
+        logging_criteria = criteria.get('logging', [])
+
+        if 'start' in logging_criteria or 'both' in logging_criteria:
+            logging.append(cls.Logging.START)
+        if 'end' in logging_criteria or 'both' in logging_criteria:
+            logging.append(cls.Logging.END)
+
+        return cls(criteria['name'], criteria['action'], criteria.get('description'), logging)
 
 
 class CandidatePolicy(object):
@@ -213,56 +225,32 @@ class CandidatePolicy(object):
     that can be appended to.
     """
 
-    # method constants
-    NEW_POLICY = 1
-    APPEND_POLICY = 2
-    TAG_OBJECT = 3
+    # implementation methods
+    Method = enum('NEW_POLICY', 'APPEND', 'TAG')
 
-    def __init__(self, target_dict, matched_policies=None, method=NEW_POLICY):
+    def __init__(self, policy_criteria, matched_policies=None, method=Method.NEW_POLICY, policy_class=BasePolicy):
 
-        self.target_dict = target_dict
-        self.matched_policies = matched_policies
+        self.policy_criteria = policy_criteria
+        self.matched_policies = matched_policies or []
         self.policy = None
         self.method = method
+        self.policy_class = policy_class
+        self.tag_address = None
+        self.tag_options = None
+        self.tag_choices = {}
+        self.linked_objects = {}
+        self.new_objects = {}
 
-        if matched_policies and len(matched_policies) == 1:
+        if self.method != self.Method.NEW_POLICY:
             # this will be an addendum to an existing policy and there was only one match
             self.set_base_policy(matched_policies[0])
+
+    def set_base_policy(self, policy):
+        """Set or change the base policy"""
+        if policy in self.matched_policies:
+            self.policy = policy
         else:
-            self.set_base_policy(matched_policies)
-
-    def set_base_policy(self, matched_policy=None):
-
-        if self.method is self.NEW_POLICY or self.matched_policies is None:
-            # this will be a new policy
-            # TODO figure out logging default?
-            self.policy = BasePolicy(name=None,
-                                     action=self.target_dict.get('action'),
-                                     description=self.target_dict.get('description'),
-                                     logging=self.target_dict.get('logging', BasePolicy.LOGGING_BOTH)
-                                     )
-            self.policy.src_zones = self.target_dict.get('source_zones')
-            self.policy.dst_zones = self.target_dict.get('destination_zones')
-            self.policy.src_addresses = self.target_dict.get('source_addresses')
-            self.policy.dst_addresses = self.target_dict.get('destination_addresses')
-            self.policy.services = self.target_dict.get('services')
-
-            self.method = self.NEW_POLICY
-
-        elif isinstance(matched_policy, BasePolicy):
-            self.policy = matched_policy
-        else:
-            self.policy = matched_policy[0]
-
-    def set_name(self, name):
-
-        # if this is a new policy, set the name otherwise do nothing
-        if self.method is self.NEW_POLICY:
-            pattern = re.compile("^([A-Za-z0-9-_]+)+$")
-            if not pattern.match(name):
-                raise BadCandidatePolicyError('Name contains invalid character(s)')
-            else:
-                self.policy.name = name
+            raise ValueError("Policy is not valid for this candidate policy")
 
 
 class EffectivePolicy(object):
