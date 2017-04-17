@@ -1,8 +1,10 @@
 
+from orangengine.models.base import BaseObject
+
 from pandevice.objects import ApplicationContainer
 
 
-class PaloAltoApplicationGroup(object):
+class PaloAltoApplicationGroup(BaseObject):
     """Palo Alto Application Group
 
     Covers pandevice ApplicationGroups and ApplicationContainers.
@@ -36,3 +38,16 @@ class PaloAltoApplicationGroup(object):
         for a in self.elements:
             value = value + "   " + a.table_value() + "\n"
         return value.rstrip('\n')  # remove the last new line
+
+    def serialize(self):
+        """Searialize self to a json acceptable data structure
+        """
+
+        elements = []
+        for e in self.elements:
+            elements.append(e.serialize())
+
+        return {
+            'name': self.name,
+            'elements': elements
+        }

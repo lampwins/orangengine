@@ -1,9 +1,10 @@
 
 from orangengine.utils import enum, bidict
 from orangengine.models.base import BaseService
+from orangengine.models.base import BaseObject
 
 
-class PaloAltoApplication(object):
+class PaloAltoApplication(BaseObject):
     """Palo Alto Appliciation
     """
 
@@ -62,3 +63,17 @@ class PaloAltoApplication(object):
 
     def table_value(self):
         return self.name
+
+    def serialize(self):
+        """Searialize self to a json acceptable data structure
+        """
+
+        services = []
+        for s in self.services:
+            services.append(s.serialize())
+
+        return {
+            'name': self.name,
+            'default_type': self.default_type,
+            'services': services,
+        }

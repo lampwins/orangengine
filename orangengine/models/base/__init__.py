@@ -1,4 +1,5 @@
 
+from orangengine.models.base.baseobject import BaseObject
 from orangengine.models.base.baseaddress import BaseAddress
 from orangengine.models.base.baseaddressgroup import BaseAddressGroup
 from orangengine.models.base.basepolicy import BasePolicy
@@ -12,4 +13,4 @@ from orangengine.models.base.basepolicy import EffectivePolicy
 
 __all__ = ['BaseAddressGroup', 'BaseAddress', 'BasePolicy', 'BaseService',
            'BaseServiceGroup', 'BaseServiceTerm', 'BasePortRange',
-           'CandidatePolicy', 'EffectivePolicy', ]
+           'CandidatePolicy', 'EffectivePolicy', 'BaseObject', ]

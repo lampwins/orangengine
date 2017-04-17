@@ -1,16 +1,14 @@
 
-from orangengine.errors import BadCandidatePolicyError
 from orangengine.utils import is_ipv4, enum, bidict, flatten
+from orangengine.models.base import BaseObject
 
 from collections import defaultdict
-import re
 from netaddr import IPRange, IPNetwork
 from terminaltables import AsciiTable
 from functools import partial
-import abc
 
 
-class BasePolicy(object):
+class BasePolicy(BaseObject):
 
     Action = enum('ALLOW', 'DENY', 'REJECT', 'DROP')
     Logging = enum('START', 'END')
@@ -49,6 +47,26 @@ class BasePolicy(object):
 
     def add_service(self, service):
         self._services.append(service)
+
+    def serialize(self):
+        """Searialize self to a json acceptable data structure
+        """
+
+        s_addrs = list(map(lambda x: x.serialize(), self.src_addresses))
+        d_addrs = list(map(lambda x: x.serialize(), self.dst_addresses))
+        services = list(map(lambda x: x.serialize(), self._services))
+
+        return {
+            'name': self.name,
+            'source_zones': self.src_zones,
+            'source_addresses': s_addrs,
+            'destination_zones': self.dst_zones,
+            'destination_addresses': d_addrs,
+            'services': services,
+            'action': self.action,
+            'description': self.description,
+            'logging': self.logging
+        }
 
     def __getattr__(self, item):
         """
@@ -219,7 +237,7 @@ class BasePolicy(object):
         return cls(criteria['name'], criteria['action'], criteria.get('description'), logging)
 
 
-class CandidatePolicy(object):
+class CandidatePolicy(BaseObject):
     """
     candidate policy stores the target element(s) or new policy and a list of the best matched policies
     that can be appended to.
@@ -227,22 +245,31 @@ class CandidatePolicy(object):
 
     # implementation methods
     Method = enum('NEW_POLICY', 'APPEND', 'TAG')
+    MethodMap = bidict({
+        Method.NEW_POLICY: 'NEW_POLICY',
+        Method.APPEND: 'APPEND',
+        Method.TAG: 'TAG',
+    })
 
-    def __init__(self, policy_criteria, matched_policies=None, method=Method.NEW_POLICY, policy_class=BasePolicy):
+    def __init__(self, policy_criteria, matched_policies=None, method=Method.NEW_POLICY):
 
         self.policy_criteria = policy_criteria
         self.matched_policies = matched_policies or []
         self.policy = None
         self.method = method
-        self.policy_class = policy_class
-        self.tag_address = None
-        self.tag_options = None
+        self.tag_options = {}
         self.tag_choices = {}
         self.linked_objects = {}
         self.new_objects = {}
 
+        # Palo Alto/Panorama specific params
+        self.address_group_tag_options = {}
+        self.shared_namespace = True
+        self.context = None
+        self.post_rulebase = True
+
         if self.method != self.Method.NEW_POLICY:
-            # this will be an addendum to an existing policy and there was only one match
+            # this will be an addendum to an existing policy default to the first policy
             self.set_base_policy(matched_policies[0])
 
     def set_base_policy(self, policy):
@@ -251,6 +278,47 @@ class CandidatePolicy(object):
             self.policy = policy
         else:
             raise ValueError("Policy is not valid for this candidate policy")
+
+    def serialize(self):
+        """Serialize self into json compatible data structures
+        """
+
+        linked_objects = {}
+        for key, value in self.linked_objects.iteritems():
+            linked_objects[key] = []
+            for v in value:
+                linked_objects[key].append(v.serialize())
+
+        new_objects = {}
+        for key, value in self.new_objects.iteritems():
+            new_objects[key] = []
+            for v in value:
+                new_objects[key].append(v.serialize())
+
+        if self.context:
+            context = self.context.device_group.name
+        else:
+            context = None
+
+        if self.matched_policies:
+            matched_policies = list(map(lambda x: x.serialize(), self.matched_policies))
+        else:
+            matched_policies = None
+
+        return {
+            'policy_criteria': self.policy_criteria,
+            'matched_policies': matched_policies,
+            'policy': self.policy.serialize(),
+            'method': self.MethodMap[self.method],
+            'tag_options': self.tag_options,
+            'tag_choices': self.tag_choices,
+            'linked_objects': linked_objects,
+            'new_objects': new_objects,
+            'context': context,
+            'address_group_tag_options': self.address_group_tag_options,
+            'shared_namespace': self.shared_namespace,
+            'post_rulebase': self.post_rulebase
+        }
 
 
 class EffectivePolicy(object):

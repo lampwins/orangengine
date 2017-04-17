@@ -15,8 +15,8 @@ from pandevice import panorama
 from pandevice import objects
 from pandevice import policies
 
-import itertools
 from collections import defaultdict
+import json
 
 
 class PaloAltoPanoramaDriver(PaloAltoBaseDriver):
@@ -224,12 +224,20 @@ class PaloAltoPanoramaDriver(PaloAltoBaseDriver):
         any_service_pandevice_obj.destination_port = 'any'
         any_service = PaloAltoService(any_service_pandevice_obj)
 
+        # create the "application-default" object
+        app_default_service_pan_obj = objects.ServiceObject()
+        app_default_service_pan_obj.name = 'application-default'
+        app_default_service = PaloAltoService(app_default_service_pan_obj)
+
         for dg_node in self.dg_hierarchy.get_all_nodes():
             for s in dg_node.device_group.findall(objects.ServiceObject):
                 dg_node.insert(PaloAltoService(s))
 
             # add the "any" object
             dg_node.insert(any_service)
+
+            # add the "application-default" object
+            dg_node.insert(app_default_service)
 
     def _parse_service_groups(self):
         """retrieve all the pandevice.objects.ServiceGroup's and parse them and store in the dg node"""
@@ -454,6 +462,53 @@ class PaloAltoPanoramaDriver(PaloAltoBaseDriver):
     def apply_policy(self, policy, commit=False):
         pass
 
+    def candidate_policy_from_json(self, json_data):
+        """Construct an instance of CandidatePolicy from a json dump
+        """
+
+        data = json.loads(json_data)
+        policy_criteria = data['policy_criteria']
+        method = CandidatePolicy.MethodMap[data['method']]
+        context = self.dg_hierarchy.get_node(data['context'])
+
+        matched_policies = []
+        for matched_policy in data['matched_policies']:
+            matched_policies.append(context.find(matched_policy['name'], PaloAltoPolicy))
+
+        candidate_policy = CandidatePolicy(policy_criteria, matched_policies, method)
+        candidate_policy.context = context
+        candidate_policy.tag_options = data['tag_options']
+        candidate_policy.tag_choices = data['tag_choices']
+        candidate_policy.address_group_tag_options = data['address_group_tag_options']
+        candidate_policy.shared_namespace = data['shared_namespace']
+        candidate_policy.post_rulebase = data['post_rulebase']
+
+        linked_objects = {}
+        for key, values in data['linked_objects'].iteritems():
+            linked_objects[key] = []
+            for value in values:
+                if key in ['source_addresses', 'destination_addresses']:
+                    cls = PaloAltoAddress
+                elif key == 'services':
+                    cls = PaloAltoService
+                else:
+                    cls = PaloAltoApplication
+                linked_objects[key].append(context.find(value['name'], cls))
+        candidate_policy.linked_objects = linked_objects
+
+        # new objects
+        new_objects = {}
+        for key, values in data['linked_objects'].iteritems():
+            new_objects[key] = []
+            for value in values:
+                if key in ['source_addresses', 'destination_addresses']:
+                    new_objects[key].append(PaloAltoAddress.from_criteria(value))
+                elif key == 'services':
+                    new_objects[key].append(PaloAltoService.from_criteria(value))
+        candidate_policy.new_objects = new_objects
+
+        return candidate_policy
+
 
 class _DeviceGroupHierarchy(object):
     """Basically a doubly linked-list to create the device group hierarchy
@@ -550,6 +605,11 @@ class _DeviceGroupHierarchy(object):
 
             elif cls == PaloAltoApplication or cls == PaloAltoApplicationGroup:
                 obj = self.name_lookup['applications'].get(name)
+
+            elif cls == PaloAltoPolicy:
+                obj = self.name_lookup['pre_rulebase'].get(name)
+                if not obj:
+                    obj = self.name_lookup['post_rulebase'].get(name)
 
             if not obj and recursive and self.parent:
                 obj = self.parent.find(name, cls, recursive)

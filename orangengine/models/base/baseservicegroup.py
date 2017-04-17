@@ -1,5 +1,8 @@
 
-class BaseServiceGroup(object):
+from orangengine.models.base import BaseObject
+
+
+class BaseServiceGroup(BaseObject):
 
     def __init__(self, name):
         """init a service group"""
@@ -27,3 +30,16 @@ class BaseServiceGroup(object):
         for s in self.elements:
             value = value + "   " + s.table_value(with_names) + "\n"
         return value.rstrip('\n')  # remove the last new line
+
+    def serialize(self):
+        """Searialize self to a json acceptable data structure
+        """
+
+        elements = []
+        for e in self.elements:
+            elements.append(e.serialize())
+
+        return {
+            'name': self.name,
+            'elements': elements
+        }

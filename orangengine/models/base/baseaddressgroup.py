@@ -1,5 +1,8 @@
 
-class BaseAddressGroup(object):
+from orangengine.models.base import BaseObject
+
+
+class BaseAddressGroup(BaseObject):
 
     def __init__(self, name):
         """init a address group object"""
@@ -26,3 +29,16 @@ class BaseAddressGroup(object):
         for a in self.elements:
             value = value + "   " + a.table_value(with_names) + "\n"
         return value.rstrip('\n')  # remove the last new line
+
+    def serialize(self):
+        """Searialize self to a json acceptable data structure
+        """
+
+        elements = []
+        for e in self.elements:
+            elements.append(e.serialize())
+
+        return {
+            'name': self.name,
+            'elements': elements
+        }

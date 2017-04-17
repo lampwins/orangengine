@@ -1,8 +1,9 @@
 
 from orangengine.utils import enum
+from orangengine.models.base import BaseObject
 
 
-class BaseAddress(object):
+class BaseAddress(BaseObject):
 
     AddressTypes = enum('IPv4', 'DNS', 'RANGE', 'ANY')
 
@@ -32,3 +33,12 @@ class BaseAddress(object):
         """
 
         return cls(criteria['name'], criteria['value'], criteria['a_type'])
+
+    def serialize(self):
+        """Searialize self to a json acceptable data structure
+        """
+        return {
+            'name': self.name,
+            'type': self.a_type,
+            'value': self.value,
+        }

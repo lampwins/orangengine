@@ -32,6 +32,19 @@ class PaloAltoPolicy(BasePolicy):
     def add_application(self, app):
         self._applications.append(app)
 
+    def serialize(self):
+        """Searialize self to a json acceptable data structure
+        """
+
+        # we need only update the super with local applications
+
+        super_dict = super(PaloAltoPolicy, self).serialize()
+        super_dict.update({
+            'applications': list(map(lambda x: x.serialize(), self._applications))
+        })
+
+        return super_dict
+
     def __getattr__(self, item):
         """add applications access or call super"""
 
@@ -43,10 +56,10 @@ class PaloAltoPolicy(BasePolicy):
     @staticmethod
     def table_service_cell(services, with_names=False):
         """handle the application-default case"""
-        if services[0] is None:
+        if services[0].name == "application-default":
             return "application-default\n"
         else:
-            return super(PaloAltoPolicy, PaloAltoPolicy).table_service_cell(services, with_names=False)
+            return super(PaloAltoPolicy, PaloAltoPolicy).table_service_cell(services, with_names=with_names)
 
     def table_application_cell(self):
         return "\n".join([a.table_value() for a in self._applications]) + '\n'

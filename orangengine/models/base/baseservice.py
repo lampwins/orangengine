@@ -1,5 +1,8 @@
 
-class BasePortRange(object):
+from orangengine.models.base import BaseObject
+
+
+class BasePortRange(BaseObject):
 
     def __init__(self, start, stop):
         """init a port range"""
@@ -17,8 +20,17 @@ class BasePortRange(object):
         else:
             raise AttributeError
 
+    def serialize(self):
+        """Searialize self to a json acceptable data structure
+        """
 
-class BaseServiceTerm(object):
+        return {
+            'start': self.start,
+            'stop': self.stop,
+        }
+
+
+class BaseServiceTerm(BaseObject):
 
     def __init__(self, name, protocol, port=None):
         """init service term object"""
@@ -37,8 +49,18 @@ class BaseServiceTerm(object):
         else:
             raise AttributeError
 
+    def serialize(self):
+        """Searialize self to a json acceptable data structure
+        """
 
-class BaseService(object):
+        return {
+            'name': self.name,
+            'protocol': self.protocol,
+            'port': self.port,
+        }
+
+
+class BaseService(BaseObject):
 
     def __init__(self, name, protocol=None, port=None):
         """init a service"""
@@ -87,4 +109,25 @@ class BaseService(object):
         """
 
         return cls(criteria['name'], criteria['protocol'], criteria['port'])
+
+    def serialize(self):
+        """Searialize self to a json acceptable data structure
+        """
+
+        terms = []
+        if self.terms:
+            for term in self.terms:
+                terms.append(term.serialize())
+
+        if isinstance(self.port, BasePortRange):
+            port = self.port.serialize()
+        else:
+            port = self.port
+
+        return {
+            'name': self.name,
+            'terms': terms,
+            'protocol': self.protocol,
+            'port': port,
+        }
 
