@@ -138,3 +138,5 @@ fabric.properties
 .idea/oragengine.iml
 bin/
 /tests/scratch.py
+.idea/inspectionProfiles/
+.idea/*
