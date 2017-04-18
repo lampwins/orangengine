@@ -31,10 +31,10 @@ def missing_cidr(address):
     """Missing CIDR
 
     :returns if the address passes in is ipv4 and missing cidr,
-        return the address with '/32' appended. Else return the
-        value passed in.
+        and not a range, return the address with '/32' appended.
+        Else return the value passed in.
     """
-    if is_ipv4(address) and '/' not in address:
+    if '-' not in address and is_ipv4(address) and '/' not in address:
         return address + '/32'
     return address
 

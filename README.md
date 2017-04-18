@@ -10,7 +10,7 @@ like library for working with network firewall policy.
 
 Currently we support these platforms:
 - Juniper SRX
-- Palo Alto Networks - Panorama Device Groups (in development)
+- Palo Alto Networks - Panorama Device Groups
 - VMware NSX DFW (road map)
 
 Orangengine works by connecting to a device and parsing its policy into a common
