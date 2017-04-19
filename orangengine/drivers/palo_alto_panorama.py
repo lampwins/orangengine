@@ -483,28 +483,46 @@ class PaloAltoPanoramaDriver(PaloAltoBaseDriver):
         candidate_policy.shared_namespace = data['shared_namespace']
         candidate_policy.post_rulebase = data['post_rulebase']
 
+        if candidate_policy.method == CandidatePolicy.Method.NEW_POLICY:
+            if not data.get('policy'):
+                raise BadCandidatePolicyError("No policy object provided to meet new policy requirement")
+            else:
+                candidate_policy.policy = PaloAltoPolicy.from_criteria(data['policy'])
+
+        elif matched_policies and data.get('policy'):
+            if candidate_policy.post_rulebase:
+                policy = context.name_lookup['post_rulebase'].get(data['policy']['name'])
+            else:
+                policy = context.name_lookup['post_rulebase'].get(data['policy']['name'])
+            candidate_policy.set_base_policy(policy)
+
         linked_objects = {}
         for key, values in data['linked_objects'].iteritems():
-            linked_objects[key] = []
-            for value in values:
+            linked_objects[key] = {}
+            for k, v in values.iteritems():
+                if not v:
+                    linked_objects[key][k] = None
+                    continue
                 if key in ['source_addresses', 'destination_addresses']:
                     cls = PaloAltoAddress
                 elif key == 'services':
                     cls = PaloAltoService
                 else:
                     cls = PaloAltoApplication
-                linked_objects[key].append(context.find(value['name'], cls))
+                linked_objects[key][k] = context.find(v['name'], cls)
         candidate_policy.linked_objects = linked_objects
 
         # new objects
         new_objects = {}
-        for key, values in data['linked_objects'].iteritems():
-            new_objects[key] = []
-            for value in values:
-                if key in ['source_addresses', 'destination_addresses']:
-                    new_objects[key].append(PaloAltoAddress.from_criteria(value))
+        for key, values in data['new_objects'].iteritems():
+            new_objects[key] = {}
+            for k, v in values.iteritems():
+                if not v:
+                    new_objects[key][k] = None
+                elif key in ['source_addresses', 'destination_addresses']:
+                    new_objects[key][k] = PaloAltoAddress.from_criteria(v)
                 elif key == 'services':
-                    new_objects[key].append(PaloAltoService.from_criteria(value))
+                    new_objects[key][k] = PaloAltoService.from_criteria(v)
         candidate_policy.new_objects = new_objects
 
         return candidate_policy

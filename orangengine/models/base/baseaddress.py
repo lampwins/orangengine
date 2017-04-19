@@ -32,7 +32,7 @@ class BaseAddress(BaseObject):
         """Create an instance from the provided criteria
         """
 
-        return cls(criteria['name'], criteria['value'], criteria['a_type'])
+        return cls(criteria['name'], criteria['value'], criteria['type'])
 
     def serialize(self):
         """Searialize self to a json acceptable data structure

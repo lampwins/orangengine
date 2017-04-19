@@ -285,15 +285,21 @@ class CandidatePolicy(BaseObject):
 
         linked_objects = {}
         for key, value in self.linked_objects.iteritems():
-            linked_objects[key] = []
-            for v in value:
-                linked_objects[key].append(v.serialize())
+            linked_objects[key] = {}
+            for k, v in value.iteritems():
+                if hasattr(v, 'serialize'):
+                    linked_objects[key][k] = v.serialize()
+                else:
+                    linked_objects[key][k] = v
 
         new_objects = {}
         for key, value in self.new_objects.iteritems():
-            new_objects[key] = []
-            for v in value:
-                new_objects[key].append(v.serialize())
+            new_objects[key] = {}
+            for k, v in value.iteritems():
+                if hasattr(v, 'serialize'):
+                    new_objects[key][k] = v.serialize()
+                else:
+                    new_objects[key][k] = v
 
         if self.context:
             context = self.context.device_group.name
@@ -303,12 +309,17 @@ class CandidatePolicy(BaseObject):
         if self.matched_policies:
             matched_policies = list(map(lambda x: x.serialize(), self.matched_policies))
         else:
-            matched_policies = None
+            matched_policies = []
+
+        if self.policy:
+            policy = self.policy.serialize()
+        else:
+            policy = None
 
         return {
             'policy_criteria': self.policy_criteria,
             'matched_policies': matched_policies,
-            'policy': self.policy.serialize(),
+            'policy': policy,
             'method': self.MethodMap[self.method],
             'tag_options': self.tag_options,
             'tag_choices': self.tag_choices,
