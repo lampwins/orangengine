@@ -510,135 +510,136 @@ class PaloAltoPanoramaDriver(PaloAltoBaseDriver):
         return candidate_policy
 
 
+class _DeviceGroupNode(object):
+    def __init__(self):
+        self.device_group = None
+        self.parent = None
+        self.children = []
+        self.objects = {
+            'services': [],
+            'service_groups': [],
+            'applications': [],
+            'application_groups': [],
+            'addresses': [],
+            'address_groups': [],
+            'pre_rulebase': [],
+            'post_rulebase': []
+        }
+        self.name_lookup = {  # factors in sister namespaces
+            'services': dict(),
+            'addresses': dict(),
+            'applications': dict(),
+            'pre_rulebase': dict(),
+            'post_rulebase': dict(),
+        }
+        self.value_lookup = {
+            'services': defaultdict(list),
+            'addresses': defaultdict(list),
+            'applications': defaultdict(list),
+        }
+
+    def insert(self, obj):
+        """insert a object into the necasary data stores"""
+
+        cls = type(obj)
+
+        if cls == PaloAltoAddress or cls == PaloAltoAddressGroup:
+            if cls == PaloAltoAddress:
+                self.objects['addresses'].append(obj)
+                self.value_lookup['addresses'][missing_cidr(obj.value)].append(obj)
+            else:
+                self.objects['address_groups'].append(obj)
+            self.name_lookup['addresses'][obj.name] = obj
+
+        elif cls == PaloAltoService or cls == PaloAltoServiceGroup:
+            if cls == PaloAltoService:
+                self.objects['services'].append(obj)
+                self.value_lookup['services'][obj.value].append(obj)
+            else:
+                self.objects['service_groups'].append(obj)
+            self.name_lookup['services'][obj.name] = obj
+
+        elif cls == PaloAltoApplication or cls == PaloAltoApplicationGroup:
+            if cls == PaloAltoApplication:
+                self.objects['applications'].append(obj)
+            else:
+                self.objects['application_groups'].append(obj)
+            self.name_lookup['applications'][obj.name] = obj
+            self.value_lookup['applications'][obj.name].append(obj)  # special case to include predefined containers
+
+        elif cls == PaloAltoPolicy:
+            rule_base_type = type(obj.pandevice_object.parent)
+            if rule_base_type == policies.PreRulebase:
+                self.objects['pre_rulebase'].append(obj)
+                self.name_lookup['pre_rulebase'][obj.name] = obj
+            else:
+                self.objects['post_rulebase'].append(obj)
+                self.name_lookup['post_rulebase'][obj.name] = obj
+
+        else:
+            raise TypeError("Object of this type ({0}) cannot be insert".format(cls))
+
+    def get_rulebase(self, include_parents=True):
+        """return a single list containing all policies from pre and post rulebases"""
+        rulebase = []
+        rulebase.extend(self.objects['pre_rulebase'])
+        rulebase.extend(self.objects['post_rulebase'])
+        if include_parents and self.parent:
+            rulebase.extend(self.parent.get_rulebase())
+        return rulebase
+
+    def find(self, name, cls, recursive=True):
+        """find an object by name"""
+
+        obj = None
+
+        if cls == PaloAltoAddress or cls == PaloAltoAddressGroup:
+            obj = self.name_lookup['addresses'].get(name)
+
+        elif cls == PaloAltoService or cls == PaloAltoServiceGroup:
+            obj = self.name_lookup['services'].get(name)
+
+        elif cls == PaloAltoApplication or cls == PaloAltoApplicationGroup:
+            obj = self.name_lookup['applications'].get(name)
+
+        elif cls == PaloAltoPolicy:
+            obj = self.name_lookup['pre_rulebase'].get(name)
+            if not obj:
+                obj = self.name_lookup['post_rulebase'].get(name)
+
+        if not obj and recursive and self.parent:
+            obj = self.parent.find(name, cls, recursive)
+
+        return obj
+
+    def find_by_value(self, value, cls, recursive=True):
+        """find objects by value"""
+
+        objs = None
+
+        if cls == PaloAltoAddress or cls == PaloAltoAddressGroup:
+            objs = self.value_lookup['addresses'].get(missing_cidr(value))
+
+        elif cls == PaloAltoService or cls == PaloAltoServiceGroup:
+            objs = self.value_lookup['services'].get(value)
+
+        elif cls == PaloAltoApplication or cls == PaloAltoApplicationGroup:
+            objs = self.value_lookup['applications'].get(value)
+
+        if not objs and recursive and self.parent:
+            objs = self.parent.find_by_value(value, cls, recursive)
+
+        return objs
+
+
 class _DeviceGroupHierarchy(object):
     """Basically a doubly linked-list to create the device group hierarchy
     """
 
-    class Node(object):
-        def __init__(self):
-            self.device_group = None
-            self.parent = None
-            self.children = []
-            self.objects = {
-                'services': [],
-                'service_groups': [],
-                'applications': [],
-                'application_groups': [],
-                'addresses': [],
-                'address_groups': [],
-                'pre_rulebase': [],
-                'post_rulebase': []
-            }
-            self.name_lookup = {  # factors in sister namespaces
-                'services': dict(),
-                'addresses': dict(),
-                'applications': dict(),
-                'pre_rulebase': dict(),
-                'post_rulebase': dict(),
-            }
-            self.value_lookup = {
-                'services': defaultdict(list),
-                'addresses': defaultdict(list),
-                'applications': defaultdict(list),
-            }
-
-        def insert(self, obj):
-            """insert a object into the necasary data stores"""
-
-            cls = type(obj)
-
-            if cls == PaloAltoAddress or cls == PaloAltoAddressGroup:
-                if cls == PaloAltoAddress:
-                    self.objects['addresses'].append(obj)
-                    self.value_lookup['addresses'][missing_cidr(obj.value)].append(obj)
-                else:
-                    self.objects['address_groups'].append(obj)
-                self.name_lookup['addresses'][obj.name] = obj
-
-            elif cls == PaloAltoService or cls == PaloAltoServiceGroup:
-                if cls == PaloAltoService:
-                    self.objects['services'].append(obj)
-                    self.value_lookup['services'][obj.value].append(obj)
-                else:
-                    self.objects['service_groups'].append(obj)
-                self.name_lookup['services'][obj.name] = obj
-
-            elif cls == PaloAltoApplication or cls == PaloAltoApplicationGroup:
-                if cls == PaloAltoApplication:
-                    self.objects['applications'].append(obj)
-                else:
-                    self.objects['application_groups'].append(obj)
-                self.name_lookup['applications'][obj.name] = obj
-                self.value_lookup['applications'][obj.name].append(obj)  # special case to include predefined containers
-
-            elif cls == PaloAltoPolicy:
-                rule_base_type = type(obj.pandevice_object.parent)
-                if rule_base_type == policies.PreRulebase:
-                    self.objects['pre_rulebase'].append(obj)
-                    self.name_lookup['pre_rulebase'][obj.name] = obj
-                else:
-                    self.objects['post_rulebase'].append(obj)
-                    self.name_lookup['post_rulebase'][obj.name] = obj
-
-            else:
-                raise TypeError("Object of this type ({0}) cannot be insert".format(cls))
-
-        def get_rulebase(self, include_parents=True):
-            """return a single list containing all policies from pre and post rulebases"""
-            rulebase = []
-            rulebase.extend(self.objects['pre_rulebase'])
-            rulebase.extend(self.objects['post_rulebase'])
-            if include_parents and self.parent:
-                rulebase.extend(self.parent.get_rulebase())
-            return rulebase
-
-        def find(self, name, cls, recursive=True):
-            """find an object by name"""
-
-            obj = None
-
-            if cls == PaloAltoAddress or cls == PaloAltoAddressGroup:
-                obj = self.name_lookup['addresses'].get(name)
-
-            elif cls == PaloAltoService or cls == PaloAltoServiceGroup:
-                obj = self.name_lookup['services'].get(name)
-
-            elif cls == PaloAltoApplication or cls == PaloAltoApplicationGroup:
-                obj = self.name_lookup['applications'].get(name)
-
-            elif cls == PaloAltoPolicy:
-                obj = self.name_lookup['pre_rulebase'].get(name)
-                if not obj:
-                    obj = self.name_lookup['post_rulebase'].get(name)
-
-            if not obj and recursive and self.parent:
-                obj = self.parent.find(name, cls, recursive)
-
-            return obj
-
-        def find_by_value(self, value, cls, recursive=True):
-            """find objects by value"""
-
-            objs = None
-
-            if cls == PaloAltoAddress or cls == PaloAltoAddressGroup:
-                objs = self.value_lookup['addresses'].get(missing_cidr(value))
-
-            elif cls == PaloAltoService or cls == PaloAltoServiceGroup:
-                objs = self.value_lookup['services'].get(value)
-
-            elif cls == PaloAltoApplication or cls == PaloAltoApplicationGroup:
-                objs = self.value_lookup['applications'].get(value)
-
-            if not objs and recursive and self.parent:
-                objs = self.parent.find_by_value(value, cls, recursive)
-
-            return objs
-
     def __init__(self, panorama_obj, xml_hierarchy):
 
         self.lookup = {}
-        self.root = _DeviceGroupHierarchy.Node()
+        self.root = _DeviceGroupNode()
         self.root.device_group = panorama_obj.shared
         self.panorama_obj = panorama_obj
         self.lookup['shared'] = self.root
@@ -651,7 +652,7 @@ class _DeviceGroupHierarchy(object):
             # this is a single element
             xml = [xml]
         for dg in xml:
-            node = _DeviceGroupHierarchy.Node()
+            node = _DeviceGroupNode()
             node.device_group = self.panorama_obj.find(dg.attrib['name'], panorama.DeviceGroup)
             node.parent = parent
             parent.children.append(node)
