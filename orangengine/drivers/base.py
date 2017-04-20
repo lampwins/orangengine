@@ -208,6 +208,7 @@ class BaseDriver(object):
             policies = self.policies
 
         self._policy_key_check(match_criteria.keys())
+        match_criteria = self._sanitize_match_criteria(match_criteria)
 
         # silently append /32 to any ipv4 address that is missing cidr
         if 'source_addresses' in match_criteria:
