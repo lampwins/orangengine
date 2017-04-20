@@ -198,6 +198,9 @@ class BaseDriver(object):
         if services:
             match_criteria['services'] = services
 
+        if match_criteria.get('action'):
+            match_criteria['action'] = match_criteria['action'].lower()
+
         return match_criteria
 
     def policy_match(self, match_criteria, match_containing_networks=True, exact=False, policies=None):
