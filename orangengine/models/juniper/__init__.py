@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 from orangengine.models.juniper.policy import JuniperSRXPolicy
 from orangengine.models.juniper.address import JuniperSRXAddress
 from orangengine.models.juniper.addressgroup import JuniperSRXAddressGroup

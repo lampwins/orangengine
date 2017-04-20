@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 from orangengine.models.paloalto.address import PaloAltoAddress
 from orangengine.models.paloalto.addressgroup import PaloAltoAddressGroup
 from orangengine.models.paloalto.service import PaloAltoService

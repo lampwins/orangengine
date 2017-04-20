@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 from orangengine.errors.errors import ShadowedPolicyError
 from orangengine.errors.errors import DuplicatePolicyError
 from orangengine.errors.errors import ConnectionError

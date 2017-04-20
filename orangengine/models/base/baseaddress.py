@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 from orangengine.utils import enum
 from orangengine.models.base import BaseObject
 

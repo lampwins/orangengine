@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 from orangengine.utils import is_ipv4, enum, bidict, flatten
 from orangengine.models.base import BaseObject
 
@@ -287,6 +287,8 @@ class CandidatePolicy(BaseObject):
         for key, value in self.linked_objects.iteritems():
             linked_objects[key] = {}
             for k, v in value.iteritems():
+                if key == 'services' and k != 'any':
+                    k = k[0] + "/" + k[1]
                 if hasattr(v, 'serialize'):
                     linked_objects[key][k] = v.serialize()
                 else:
@@ -296,6 +298,8 @@ class CandidatePolicy(BaseObject):
         for key, value in self.new_objects.iteritems():
             new_objects[key] = {}
             for k, v in value.iteritems():
+                if key == 'services' and k != 'any':
+                    k = k[0] + "/" + k[1]
                 if hasattr(v, 'serialize'):
                     new_objects[key][k] = v.serialize()
                 else:

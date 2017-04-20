@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 from orangengine.models.base import BaseService, BasePortRange
 from orangengine.utils import create_element
 

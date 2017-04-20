@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 class ShadowedPolicyError(Exception):
     """
     This exception gets raised when a policy recommendation is requested for a shadowed policy

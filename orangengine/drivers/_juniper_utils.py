@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from lxml import etree as letree
 from orangengine.utils import is_ipv4
 

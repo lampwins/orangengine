@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 from orangengine.models.base import BasePolicy
 from orangengine.models.base import BaseAddress
 from orangengine.models.base import BaseServiceTerm

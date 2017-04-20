@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 from orangengine.models.base.baseobject import BaseObject
 from orangengine.models.base.baseaddress import BaseAddress
 from orangengine.models.base.baseaddressgroup import BaseAddressGroup

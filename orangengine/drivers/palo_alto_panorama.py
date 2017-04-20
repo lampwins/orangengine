@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 from orangengine.drivers.palo_alto_base import PaloAltoBaseDriver
 from orangengine.models.paloalto import PaloAltoPolicy
 from orangengine.models.paloalto import PaloAltoAddress
@@ -500,6 +500,9 @@ class PaloAltoPanoramaDriver(PaloAltoBaseDriver):
         for key, values in data['linked_objects'].iteritems():
             linked_objects[key] = {}
             for k, v in values.iteritems():
+                if key == 'services' and k != 'any':
+                    parts = k.split("/")
+                    k = tuple(parts)
                 if not v:
                     linked_objects[key][k] = None
                     continue
@@ -517,6 +520,9 @@ class PaloAltoPanoramaDriver(PaloAltoBaseDriver):
         for key, values in data['new_objects'].iteritems():
             new_objects[key] = {}
             for k, v in values.iteritems():
+                if key == 'services' and k != 'any':
+                    parts = k.split("/")
+                    k = tuple(parts)
                 if not v:
                     new_objects[key][k] = None
                 elif key in ['source_addresses', 'destination_addresses']:

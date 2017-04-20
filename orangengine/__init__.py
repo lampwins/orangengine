@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 from orangengine.dispatcher import dispatch
 from orangengine import utils
 

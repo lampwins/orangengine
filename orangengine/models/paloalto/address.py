@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 from orangengine.models.base import BaseAddress
 from orangengine.utils import bidict
 
