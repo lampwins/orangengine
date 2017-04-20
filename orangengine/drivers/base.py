@@ -186,6 +186,20 @@ class BaseDriver(object):
         if not all(k in self.ALLOWED_POLICY_KEYS for k in keys):
             raise ValueError('Invalid key in match criteria.')
 
+    @staticmethod
+    def _sanitize_match_criteria(match_criteria):
+        """this TEMPORARY method cleans the match criteria"""
+        services = []
+        for service in match_criteria.get('services', []):
+            if service == 'any':
+                services.append(service)
+            else:
+                services.append(tuple([str(x) for x in service]))
+        if services:
+            match_criteria['services'] = services
+
+        return match_criteria
+
     def policy_match(self, match_criteria, match_containing_networks=True, exact=False, policies=None):
         """
         match policy tuples exactly by match criteria (also a tuple) and return those policies

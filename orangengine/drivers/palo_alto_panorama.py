@@ -467,16 +467,7 @@ class PaloAltoPanoramaDriver(PaloAltoBaseDriver):
         """
 
         data = json.loads(json_data)
-        policy_criteria = data['policy_criteria']
-        services = []
-        for service in policy_criteria.get('services', []):
-            if service == 'any':
-                services.append(service)
-            else:
-                services.append(tuple([str(x) for x in service]))
-        if services:
-            policy_criteria['services'] = services
-
+        policy_criteria = self._sanitize_match_criteria(data['policy_criteria'])
         method = CandidatePolicy.MethodMap[data['method']]
         context = self.dg_hierarchy.get_node(data['context'])
 
