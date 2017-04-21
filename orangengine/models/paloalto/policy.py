@@ -91,7 +91,7 @@ class PaloAltoPolicy(BasePolicy):
         pandevice_object = policies.SecurityRule()
         pandevice_object.name = criteria['name']
         pandevice_object.description = criteria.get('description', '')
-        pandevice_object.action = criteria['action']
+        pandevice_object.action = criteria['action']  # we expect it to be human readable at this point, map it later
 
         if 'start' in logging_criteria or 'both' in logging_criteria:
             pandevice_object.log_start = True

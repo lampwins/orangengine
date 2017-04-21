@@ -63,7 +63,7 @@ class BasePolicy(BaseObject):
             'destination_zones': self.dst_zones,
             'destination_addresses': d_addrs,
             'services': services,
-            'action': self.action,
+            'action': self.ActionMap[self.action],
             'description': self.description,
             'logging': self.logging
         }
@@ -234,7 +234,7 @@ class BasePolicy(BaseObject):
         if 'end' in logging_criteria or 'both' in logging_criteria:
             logging.append(cls.Logging.END)
 
-        return cls(criteria['name'], criteria['action'], criteria.get('description'), logging)
+        return cls(criteria['name'], cls.ActionMap[criteria['action']], criteria.get('description'), logging)
 
 
 class CandidatePolicy(BaseObject):
