@@ -1,11 +1,17 @@
 # -*- coding: utf-8 -*-
-from orangengine.utils import enum
+from orangengine.utils import enum, bidict
 from orangengine.models.base import BaseObject
 
 
 class BaseAddress(BaseObject):
 
     AddressTypes = enum('IPv4', 'DNS', 'RANGE', 'ANY')
+    TypeMap = bidict({
+        AddressTypes.IPv4: 'ipv4',
+        AddressTypes.DNS: 'dns',
+        AddressTypes.RANGE: 'range',
+        AddressTypes.ANY: 'any',
+    })
 
     def __init__(self, name, value, a_type):
         """init address object"""
@@ -32,13 +38,13 @@ class BaseAddress(BaseObject):
         """Create an instance from the provided criteria
         """
 
-        return cls(criteria['name'], criteria['value'], criteria['type'])
+        return cls(criteria['name'], criteria['value'], cls.TypeMap[criteria['type']])
 
     def serialize(self):
         """Searialize self to a json acceptable data structure
         """
         return {
             'name': self.name,
-            'type': self.a_type,
+            'type': self.TypeMap[self.a_type],
             'value': self.value,
         }
