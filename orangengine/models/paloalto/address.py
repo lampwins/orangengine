@@ -34,6 +34,6 @@ class PaloAltoAddress(BaseAddress):
         pandevice_object = objects.AddressObject()
         pandevice_object.name = criteria['name']
         pandevice_object.value = criteria['value']
-        pandevice_object.type = cls.TypeMap[criteria['type']]
+        pandevice_object.type = criteria['type']
 
         return cls(pandevice_object)
