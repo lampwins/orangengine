@@ -343,6 +343,9 @@ class PaloAltoPanoramaDriver(PaloAltoBaseDriver):
         attributes used to make decisions on how to source and create new objects.
         """
 
+        if isinstance(candidate_policy, dict):
+            candidate_policy = self.candidate_policy_from_json(json.dumps(candidate_policy))
+
         if candidate_policy.policy is None:
             raise BadCandidatePolicyError("Missing a policy object!")
 
@@ -444,7 +447,7 @@ class PaloAltoPanoramaDriver(PaloAltoBaseDriver):
             for key, value in candidate_policy.new_objects.iteritems():
                 # create all the new pan device objects on the device group
                 for obj in value.values():
-                    self._create_object(device_group, obj)
+                    self._create_object(device_group, obj.pandevice_object)
 
             # all objects are now valid, so merge them
             merged_objects = candidate_policy.linked_objects.copy()
