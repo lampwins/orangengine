@@ -161,16 +161,17 @@ class PaloAltoPanoramaDriver(PaloAltoBaseDriver):
                     obj = context.find_by_value(v, PaloAltoApplication)
 
                 if obj:
-                    # now we have to figure out object precedence
-                    found_objs = obj
-                    for o in found_objs:
-                        _o = context.find(name=o.name, cls=type(o))
-                        if _o == o:
-                            obj = o
-                            break
-                    if obj == found_objs:
-                        # no object after precedence check
-                        obj = None
+                #    # now we have to figure out object precedence
+                #    found_objs = obj
+                #    for o in found_objs:
+                #        _o = context.find(name=o.name, cls=type(o))
+                #        if _o == o:
+                #            obj = o
+                #            break
+                #    if obj == found_objs:
+                #        # no object after precedence check
+                #        obj = None
+                    obj = obj[0]
                 linked_objects[key][v] = obj
 
         return linked_objects
