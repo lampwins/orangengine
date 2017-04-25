@@ -451,8 +451,16 @@ class PaloAltoPanoramaDriver(PaloAltoBaseDriver):
                     self._create_object(device_group, obj.pandevice_object)
 
             # all objects are now valid, so merge them
-            merged_objects = candidate_policy.linked_objects.copy()
-            merged_objects.update(candidate_policy.new_objects)
+            merged_objects = {}
+            for key in interesting_keys:
+                merged_objects[key] = {}
+                linked_key = candidate_policy.linked_objects.get(key)
+                if linked_key:
+                    merged_objects[key] = linked_key
+                new_key = candidate_policy.new_objects.get(key)
+                if new_key:
+                    merged_objects[key].update(new_key)
+
 
             # now link the objects to the policy
             self._link_policy_objects(pandevice_policy_object, merged_objects, candidate_policy.policy_criteria)
@@ -461,7 +469,7 @@ class PaloAltoPanoramaDriver(PaloAltoBaseDriver):
             self._apply_object(rulebase, pandevice_policy_object)
 
         if commit:
-            self.device.commit_all(sync=True, device_group=candidate_policy.context.device_group.name)
+            self.device.commit_all(sync=True, devicegroup=candidate_policy.context.device_group.name)
 
     def apply_policy(self, policy, commit=False):
         pass
@@ -505,18 +513,20 @@ class PaloAltoPanoramaDriver(PaloAltoBaseDriver):
             linked_objects[key] = {}
             for k, v in values.iteritems():
                 if key == 'services' and k != 'any':
-                    parts = k.split("/")
-                    k = tuple(parts)
+                    k = (v['protocol'], v['port'])
                 if not v:
                     linked_objects[key][k] = None
                     continue
                 if key in ['source_addresses', 'destination_addresses']:
                     cls = PaloAltoAddress
+                    value = v['value']
                 elif key == 'services':
                     cls = PaloAltoService
+                    value = k
                 else:
                     cls = PaloAltoApplication
-                linked_objects[key][k] = context.find(v['name'], cls)
+                    value = None  # TODO: figure out a proper 'value' for PaloAltoApplication here
+                linked_objects[key][k] = context.find_by_name_value(v['name'], value, cls)
         candidate_policy.linked_objects = linked_objects
 
         # new objects
@@ -658,6 +668,29 @@ class _DeviceGroupNode(object):
             objs = self.parent.find_by_value(value, cls, recursive)
 
         return objs
+
+    def find_by_name_value(self, name, value, cls, recursive=True):
+        """find an object by both name AND value together"""
+
+        obj = None
+
+        if cls == PaloAltoAddress or cls == PaloAltoAddressGroup:
+            _obj = self.name_lookup['addresses'].get(name)
+            if _obj and _obj.value == value:
+                obj = _obj
+
+        elif cls == PaloAltoService or cls == PaloAltoServiceGroup:
+            _obj = self.name_lookup['services'].get(name)
+            if _obj and _obj.value == value:
+                obj = _obj
+
+        elif cls == PaloAltoApplication or cls == PaloAltoApplicationGroup:
+            obj = self.name_lookup['applications'].get(name)
+
+        if not obj and recursive and self.parent:
+            obj = self.parent.find_by_name_value(name, value, cls, recursive)
+
+        return obj
 
 
 class _DeviceGroupHierarchy(object):
