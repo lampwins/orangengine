@@ -134,8 +134,8 @@ class BasePolicy(BaseObject):
         determine if self is a match for the given criteria
         """
         for key, value in match_criteria.iteritems():
-            if value is None:
-                # this key was included but the value is None, so skip it
+            if not value:
+                # this key was included but has no value so skip it
                 continue
 
             p_value = getattr(self, key, [])

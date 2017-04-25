@@ -122,7 +122,7 @@ class PaloAltoPanoramaDriver(PaloAltoBaseDriver):
                 candidate_policy.address_group_tag_options = address_group_tag_options
                 candidate_policy.method = CandidatePolicy.Method.TAG
 
-        elif candidate_policy.method in [CandidatePolicy.Method.NEW_POLICY, CandidatePolicy.Method.APPEND]:
+        if candidate_policy.method in [CandidatePolicy.Method.NEW_POLICY, CandidatePolicy.Method.APPEND]:
             candidate_policy.linked_objects = self.candidate_policy_link_new(candidate_policy.policy_criteria, context)
 
         candidate_policy.context = context
