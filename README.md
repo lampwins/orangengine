@@ -2,6 +2,10 @@
 Please note that orangengine is still considered pre alpha and has not made a public release yet.
 Soon...
 
+Also note that the project is currently using a custom fork of the pandevice library located [here](https://github.com/lampwins/pandevice)
+You will need to clone this fork and install it manually to satisfy the pandevice requirement until such a time as the new functionality
+is added to pandevice proper (PRs currently open).
+
 # orangengine
 Firewall Policy Automation Engine
 
