@@ -9,7 +9,7 @@ class JuniperSRXServiceGroup(BaseServiceGroup):
 
         super(JuniperSRXServiceGroup, self).__init__(name)
 
-    def map(self):
+    def to_xml(self):
         """Map service group objects to juniper SRX config tree elements
         """
 

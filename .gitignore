@@ -140,3 +140,4 @@ bin/
 /tests/scratch.py
 .idea/inspectionProfiles/
 .idea/*
+.vscode/*

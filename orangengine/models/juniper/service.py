@@ -9,7 +9,7 @@ class JuniperSRXService(BaseService):
 
         super(JuniperSRXService, self).__init__(name, protocol, port)
 
-    def map(self):
+    def to_xml(self):
         """Map service objects to juniper SRX config tree elements
         """
 

@@ -37,7 +37,7 @@ class TestPolicyAddressMatching(unittest.TestCase):
         self.assertEqual(self.policy.match({'destination_addresses': ['2.2.2.2/32']}), True)
 
 
-class TestJuniperSRXMappers(unittest.TestCase):
+class TestJuniperSRXModelsToXML(unittest.TestCase):
 
     def setUp(self):
         # address and address groups
@@ -60,40 +60,40 @@ class TestJuniperSRXMappers(unittest.TestCase):
         self.servicegroup.add(self.term_service)
         self.servicegroup.add(self.port_range_service)
 
-    def test_ipv4_address_mapper(self):
-        element = self.ipv4_address.map()
+    def test_ipv4_address_to_xml(self):
+        element = self.ipv4_address.to_xml()
         self.assertEquals(element.find('name').text, 'test-ipv4-address')
         self.assertEquals(element.find('ip-prefix').text, '1.1.1.1/32')
 
-    def test_dns_address_mapper(self):
-        element = self.dns_address.map()
+    def test_dns_address_to_xml(self):
+        element = self.dns_address.to_xml()
         self.assertEquals(element.find('name').text, 'test-dns-address')
         self.assertEquals(element.find('dns-name').find('name').text, 'www.example.com')
 
-    def test_address_group_mapper(self):
-        element = self.address_group.map()
+    def test_address_group_to_xml(self):
+        element = self.address_group.to_xml()
         self.assertEqual(element.find('name').text, 'test-address-group')
         addresses = [e.find('name').text for e in element.findall('address')]
         self.assertIn('test-ipv4-address', addresses)
         self.assertIn('test-dns-address', addresses)
 
-    def test_service_mapper(self):
+    def test_service_to_xml(self):
         # regular service
-        element = self.regular_service.map()
+        element = self.regular_service.to_xml()
         self.assertEqual(element.find('name').text, 'regular-service')
         self.assertEqual(element.find('protocol').text, 'udp')
         self.assertEqual(element.find('destination-port').text, '666')
 
         # term service
-        element = self.term_service.map()
+        element = self.term_service.to_xml()
         self.assertEqual(len(element.findall('term')), 2)
 
         # port range service
-        element = self.port_range_service.map()
+        element = self.port_range_service.to_xml()
         self.assertEqual(element.find('destination-port').text, '666-667')
 
-    def test_service_group_mapper(self):
-        element = self.servicegroup.map()
+    def test_service_group_to_xml(self):
+        element = self.servicegroup.to_xml()
         self.assertEqual(element.find('name').text, 'test-group')
         self.assertEqual(len(element.findall('application')), 3)
 

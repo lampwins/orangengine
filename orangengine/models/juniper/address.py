@@ -9,7 +9,7 @@ class JuniperSRXAddress(BaseAddress):
 
         super(JuniperSRXAddress, self).__init__(name, value, a_type)
 
-    def map(self):
+    def to_xml(self):
         """Map address objects to juniper SRX config tree elements
         """
 

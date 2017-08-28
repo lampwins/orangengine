@@ -24,7 +24,7 @@ class JuniperSRXPolicy(BasePolicy):
 
         super(JuniperSRXPolicy, self).__init__(name, action, description, logging)
 
-    def map(self):
+    def to_xml(self):
         """Map Juniper SRX Policy Object into xml config element
         """
 
