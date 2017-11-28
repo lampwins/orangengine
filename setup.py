@@ -17,7 +17,7 @@ config = {
     'author': 'John Anderson',
     'url': 'https://github.com/lampwins/orangengine',
     'download_url': 'https://github.com/lampwins/orangengine',
-    'author_email': 'lampwins@gmail.com.',
+    'author_email': 'lampwins@gmail.com',
     'version': '0.0.1',
     'scripts': [],
     'name': 'orangengine',
